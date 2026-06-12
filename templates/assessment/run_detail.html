@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block title %}Run #{{ run.pk }} — {{ run.get_strategy_display }} | ClinNoteRAG{% endblock %}
+{% block content %}
+
+<a href="/" style="font-size:13px;color:#6c757d;">← Dashboard</a>
+<h1 style="margin-top:12px;">Evaluation Run #{{ run.pk }}</h1>
+<p class="subtitle">{{ run.get_strategy_display }} · <code>{{ run.llm_model }}</code> · {{ run.created_at|date:"Y-m-d H:i" }}</p>
+
+<div class="grid-4">
+  <div class="stat">
+    <div class="stat-label">Notes evaluated</div>
+    <div class="stat-value">{{ run.notes_evaluated }}</div>
+  </div>
+  <div class="stat">
+    <div class="stat-label">Precision</div>
+    <div class="stat-value" style="color:#0066cc;">{% if run.precision %}{{ run.precision|floatformat:4 }}{% else %}—{% endif %}</div>
+  </div>
+  <div class="stat">
+    <div class="stat-label">Recall</div>
+    <div class="stat-value" style="color:#0066cc;">{% if run.recall %}{{ run.recall|floatformat:4 }}{% else %}—{% endif %}</div>
+  </div>
+  <div class="stat">
+    <div class="stat-label">F1 Score</div>
+    <div class="stat-value" style="color:{% if run.f1 and run.f1 >= 0.8 %}#065f46{% elif run.f1 and run.f1 >= 0.6 %}#92400e{% else %}#991b1b{% endif %};">
+      {% if run.f1 %}{{ run.f1|floatformat:4 }}{% else %}—{% endif %}
+    </div>
+  </div>
+</div>
+
+{% if case_metrics %}
+<h2>Per-Case Breakdown</h2>
+<table>
+  <thead>
+    <tr><th>Case</th><th>Topic</th><th>TP</th><th>FP</th><th>FN</th><th>TN</th><th>Precision</th><th>Recall</th><th>F1</th></tr>
+  </thead>
+  <tbody>
+    {% for m in case_metrics %}
+    <tr>
+      <td><span class="badge badge-blue">Case {{ m.case_num }}</span></td>
+      <td>{{ m.topic }}</td>
+      <td style="color:#065f46;">{{ m.tp }}</td>
+      <td style="color:#991b1b;">{{ m.fp }}</td>
+      <td style="color:#92400e;">{{ m.fn }}</td>
+      <td style="color:#6c757d;">{{ m.tn }}</td>
+      <td>{{ m.precision }}</td>
+      <td>{{ m.recall }}</td>
+      <td>
+        {% if m.f1 >= 0.8 %}<span class="badge badge-green">{{ m.f1 }}</span>
+        {% elif m.f1 >= 0.6 %}<span class="badge badge-yellow">{{ m.f1 }}</span>
+        {% else %}<span class="badge badge-red">{{ m.f1 }}</span>{% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<p class="empty">No verdict data stored for this run. Verdicts are saved to the DB when evaluate.py is run.</p>
+{% endif %}
+
+{% endblock %}
