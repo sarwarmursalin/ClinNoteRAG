@@ -1,0 +1,23 @@
+[project]
+name = "clinnoterag"
+version = "0.1.0"
+description = "ClinNoteRAG — Agentic RAG system for grading medical student patient notes against NBME rubric concepts"
+requires-python = ">=3.11"
+dependencies = [
+    "django>=5.0",
+    "chromadb>=0.5",
+    "pydantic-ai[anthropic]>=0.1",
+    "anthropic>=0.40",
+    "sentence-transformers>=3.0",
+    "pandas>=2.0",
+    "scikit-learn>=1.4",
+    "python-dotenv>=1.0",
+]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.4",
+]
+
+[tool.ruff]
+line-length = 100

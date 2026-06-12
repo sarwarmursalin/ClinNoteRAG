@@ -1,0 +1,8 @@
+.env
+*.pyc
+__pycache__/
+db.sqlite3
+chroma_db/
+scripts/results.csv
+scripts/metrics_summary.csv
+.venv/

@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>ClinNoteRAG — Evaluation Results</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 900px; margin: 40px auto; padding: 0 20px; }
+    h1 { color: #1a1a2e; }
+    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+    th, td { padding: 10px 14px; border: 1px solid #ddd; text-align: left; }
+    th { background: #f5f5f5; font-weight: 600; }
+    tr:hover { background: #fafafa; }
+    .f1-high { color: #16a34a; font-weight: bold; }
+    .f1-mid  { color: #d97706; font-weight: bold; }
+    .f1-low  { color: #dc2626; font-weight: bold; }
+    .empty   { color: #999; font-style: italic; }
+  </style>
+</head>
+<body>
+  <h1>ClinNoteRAG</h1>
+  <p>Agentic RAG system for NBME patient note concept coverage assessment.</p>
+
+  {% if runs %}
+  <table>
+    <thead>
+      <tr>
+        <th>Strategy</th>
+        <th>Model</th>
+        <th>Notes</th>
+        <th>Precision</th>
+        <th>Recall</th>
+        <th>F1</th>
+        <th>Run date</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for run in runs %}
+      <tr>
+        <td>{{ run.get_strategy_display }}</td>
+        <td>{{ run.llm_model }}</td>
+        <td>{{ run.notes_evaluated }}</td>
+        <td>{% if run.precision %}{{ run.precision|floatformat:4 }}{% else %}—{% endif %}</td>
+        <td>{% if run.recall %}{{ run.recall|floatformat:4 }}{% else %}—{% endif %}</td>
+        <td>
+          {% if run.f1 %}
+            {% if run.f1 >= 0.8 %}<span class="f1-high">{{ run.f1|floatformat:4 }}</span>
+            {% elif run.f1 >= 0.6 %}<span class="f1-mid">{{ run.f1|floatformat:4 }}</span>
+            {% else %}<span class="f1-low">{{ run.f1|floatformat:4 }}</span>{% endif %}
+          {% else %}—{% endif %}
+        </td>
+        <td>{{ run.created_at|date:"Y-m-d H:i" }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="empty">No evaluation runs yet. Run <code>python scripts/evaluate.py</code> first.</p>
+  {% endif %}
+</body>
+</html>
