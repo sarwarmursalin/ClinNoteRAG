@@ -54,8 +54,8 @@
   <div>
     <div class="profile-name">{{ user.get_full_name|default:user.username }}</div>
     <div class="profile-meta">
-      <span>Student</span>
-      {% if profile.student_id %}Student ID: {{ profile.student_id }}{% endif %}
+      <span>{% if profile.is_faculty %}Faculty / Grader{% else %}Student{% endif %}</span>
+      {% if profile.is_student and profile.student_id %} · Student ID: {{ profile.student_id }}{% endif %}
     </div>
   </div>
 </div>
@@ -93,9 +93,15 @@
     <span class="info-value">{{ user.email }}</span>
   </div>
   {% endif %}
+  {% if profile.is_student %}
   <div class="info-row">
     <span class="info-label">Student ID</span>
     <span class="info-value">{{ profile.student_id|default:"—" }}</span>
+  </div>
+  {% endif %}
+  <div class="info-row">
+    <span class="info-label">Role</span>
+    <span class="info-value">{% if profile.is_faculty %}Faculty / Grader{% else %}Student{% endif %}</span>
   </div>
   <div class="info-row">
     <span class="info-label">Member since</span>
@@ -107,8 +113,12 @@
 <div class="info-card">
   <h2>Quick actions</h2>
   <div class="action-row">
-    <a href="/evaluate/" class="btn-action btn-primary-action">Evaluate a note →</a>
-    <a href="/my-results/" class="btn-action btn-secondary-action">My submissions</a>
+    {% if profile.is_faculty %}
+      <a href="/dashboard/" class="btn-action btn-primary-action">Dashboard →</a>
+    {% else %}
+      <a href="/evaluate/" class="btn-action btn-primary-action">Evaluate a note →</a>
+      <a href="/my-results/" class="btn-action btn-secondary-action">My submissions</a>
+    {% endif %}
     <a href="/logout/" class="btn-action btn-secondary-action">Sign out</a>
   </div>
 </div>

@@ -173,7 +173,11 @@ def faculty_dashboard(request):
     research_runs = EvaluationRun.objects.filter(f1__isnull=False).order_by("-created_at")
 
     # Summary stats
-    unique_students = submissions.values("user").distinct().count()
+    # Count distinct authenticated users + distinct legacy student names separately
+    auth_students = submissions.filter(user__isnull=False).exclude(user__username="anonymous_student").values("user").distinct().count()
+    legacy_students = submissions.filter(user__isnull=True).values("student_name").distinct().count()
+    anon_students = submissions.filter(user__username="anonymous_student").values("student_name").distinct().count()
+    unique_students = auth_students + legacy_students + anon_students
     all_pcts = [r["pct"] for r in submission_rows]
     avg_score = round(sum(all_pcts) / len(all_pcts)) if all_pcts else 0
 

@@ -32,8 +32,8 @@
 </style>
 
 <div class="page-header">
-  <h1>Grader Dashboard</h1>
-  <p class="subtitle">Overview of all student submissions and research evaluation runs.</p>
+  <h1>{% if user.is_superuser %}Admin Dashboard{% else %}Grader Dashboard{% endif %}</h1>
+  <p class="subtitle">Overview of all student submissions{% if user.is_superuser %} and research evaluation runs{% endif %}.</p>
 </div>
 
 <div class="grid-4" style="margin-bottom:32px;">
