@@ -1,0 +1,31 @@
+{% extends "base_auth.html" %}
+{% block title %}Sign In — ClinNoteRAG{% endblock %}
+{% block auth_content %}
+
+<h2 class="auth-title">Sign in to ClinNoteRAG</h2>
+<p class="auth-sub">Don't have an account? <a href="/signup/">Register</a></p>
+
+<form method="post" novalidate>
+  {% csrf_token %}
+
+  {% if form.non_field_errors %}
+  <div class="auth-error">
+    {% for e in form.non_field_errors %}{{ e }}{% endfor %}
+  </div>
+  {% endif %}
+
+  <div class="form-group">
+    <label>Username</label>
+    {{ form.username }}
+    {% if form.username.errors %}<p class="field-error">{{ form.username.errors.0 }}</p>{% endif %}
+  </div>
+  <div class="form-group">
+    <label>Password</label>
+    {{ form.password }}
+    {% if form.password.errors %}<p class="field-error">{{ form.password.errors.0 }}</p>{% endif %}
+  </div>
+
+  <button type="submit" class="btn-auth">Sign in</button>
+</form>
+
+{% endblock %}

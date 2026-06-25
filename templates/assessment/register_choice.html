@@ -1,0 +1,49 @@
+{% extends "base_auth.html" %}
+{% block title %}Create Account — ClinNoteRAG{% endblock %}
+{% block auth_content %}
+
+<h2 class="auth-title">Create an account</h2>
+<p class="auth-sub">Choose your role to get started.</p>
+
+<style>
+  .role-card {
+    display: block; border: 2px solid #e5e7eb; border-radius: 10px;
+    padding: 20px 20px; margin-bottom: 14px; text-decoration: none;
+    transition: border-color .15s, background .15s; cursor: pointer;
+  }
+  .role-card:hover { border-color: #0066cc; background: #f0f6ff; text-decoration: none; }
+  .role-card.disabled { cursor: default; opacity: .75; }
+  .role-card.disabled:hover { border-color: #e5e7eb; background: #fff; }
+  .role-icon { font-size: 26px; margin-bottom: 8px; }
+  .role-name { font-size: 15px; font-weight: 700; color: #111827; margin-bottom: 3px; }
+  .role-desc { font-size: 12px; color: #6c757d; line-height: 1.5; }
+  .role-tag {
+    display: inline-block; margin-top: 8px;
+    font-size: 11px; font-weight: 700; padding: 2px 9px;
+    border-radius: 10px;
+  }
+  .tag-self  { background: #d1fae5; color: #065f46; }
+  .tag-admin { background: #fef3c7; color: #92400e; }
+  .divider { border: none; border-top: 1px solid #e5e7eb; margin: 18px 0; }
+  .back-link { text-align: center; font-size: 13px; color: #6c757d; margin-top: 14px; }
+  .back-link a { color: #0066cc; }
+</style>
+
+<a href="/register/" class="role-card">
+  <div class="role-icon">🎓</div>
+  <div class="role-name">Student</div>
+  <div class="role-desc">Register with your student ID to submit patient notes and receive instant feedback on concept coverage.</div>
+  <span class="role-tag tag-self">Self-registration →</span>
+</a>
+
+<div class="role-card disabled">
+  <div class="role-icon">🩺</div>
+  <div class="role-name">Faculty / Grader</div>
+  <div class="role-desc">View all student submissions, access research evaluation runs, and compare system performance across strategies.</div>
+  <span class="role-tag tag-admin">Account created by administrator</span>
+</div>
+
+<hr class="divider">
+<p class="back-link">Already have an account? <a href="/login/">Sign in</a></p>
+
+{% endblock %}

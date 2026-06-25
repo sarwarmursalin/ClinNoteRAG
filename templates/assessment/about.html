@@ -1,0 +1,147 @@
+{% extends "base.html" %}
+{% block title %}About — ClinNoteRAG{% endblock %}
+{% block content %}
+<style>
+  .about-hero {
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 60%, #0f3460 100%);
+    border-radius: 14px; padding: 52px 48px; margin-bottom: 48px; color: #fff;
+  }
+  .about-hero h1 { font-size: 32px; font-weight: 800; margin-bottom: 12px; color: #fff; }
+  .about-hero p  { font-size: 15px; color: #94a3b8; max-width: 600px; line-height: 1.7; }
+  .about-section { margin-bottom: 48px; }
+  .about-section h2 { font-size: 20px; font-weight: 700; margin-bottom: 14px; color: #111827; border-bottom: 2px solid #e5e7eb; padding-bottom: 10px; }
+  .about-section p  { font-size: 14px; color: #374151; line-height: 1.8; margin-bottom: 12px; }
+  .arch-pipeline {
+    background: #fff; border-radius: 12px; padding: 28px 32px;
+    box-shadow: 0 1px 4px rgba(0,0,0,.07); margin-top: 20px;
+    border-left: 4px solid #f59e0b;
+  }
+  .arch-pipeline h3 { font-size: 15px; font-weight: 700; margin-bottom: 6px; color: #111827; }
+  .arch-pipeline .arch-tag {
+    display: inline-block; background: #fef3c7; color: #92400e;
+    border-radius: 20px; padding: 2px 10px; font-size: 11px; font-weight: 700;
+    margin-bottom: 14px;
+  }
+  .arch-pipeline p { font-size: 14px; color: #374151; line-height: 1.7; margin-bottom: 16px; }
+  .arch-steps { display: flex; flex-direction: column; gap: 12px; margin-top: 4px; }
+  .arch-step {
+    display: flex; align-items: flex-start; gap: 14px;
+    background: #f8f9fa; border-radius: 8px; padding: 14px 16px;
+  }
+  .arch-step-num {
+    width: 28px; height: 28px; border-radius: 50%; flex-shrink: 0;
+    background: #fef3c7; color: #92400e; font-size: 12px; font-weight: 800;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .arch-step-body strong { font-size: 13px; font-weight: 700; color: #111827; display: block; margin-bottom: 2px; }
+  .arch-step-body span  { font-size: 13px; color: #6c757d; line-height: 1.5; }
+  .cases-table-wrap { background: #fff; border-radius: 10px; box-shadow: 0 1px 4px rgba(0,0,0,.07); overflow: hidden; }
+  .tech-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+  .tech-chip  {
+    background: #f1f3f5; border: 1px solid #e5e7eb; border-radius: 6px;
+    padding: 4px 10px; font-size: 12px; font-weight: 600; color: #374151;
+  }
+</style>
+
+<div class="about-hero">
+  <h1>About ClinNoteRAG</h1>
+  <p>An agentic retrieval-augmented system that automatically evaluates medical student patient history notes against NBME clinical rubric concepts — with zero labeled training data.</p>
+</div>
+
+<div class="about-section">
+  <h2>What it does</h2>
+  <p>When a medical student writes a patient history note during a clinical skills exam, they need to document specific clinical concepts — chief complaint, relevant history, associated symptoms, and social/family history. ClinNoteRAG reads the free-text note and checks it against a rubric of required concepts, reporting which were documented and which were missed.</p>
+  <p>Unlike traditional automated scoring systems that require hundreds of labeled training examples, ClinNoteRAG uses large language model reasoning to evaluate notes with no prior training on the target case. This means it can be applied immediately to new cases as they are added to the exam pool.</p>
+</div>
+
+<div class="about-section">
+  <h2>System architecture</h2>
+  <p>ClinNoteRAG is built on an <strong>Agentic RAG</strong> architecture — a large language model that actively queries a vector database as a tool, reasoning over each clinical concept individually rather than processing everything in a single pass.</p>
+  <div class="arch-pipeline">
+    <h3>Agentic RAG Pipeline</h3>
+    <span class="arch-tag">Production architecture</span>
+    <p>For every submitted note, the agent works through each required clinical concept one at a time. It retrieves semantically similar synonyms and phrasings from ChromaDB, then reasons about whether that concept is documented in the note — producing a present/absent verdict with supporting evidence.</p>
+    <div class="arch-steps">
+      <div class="arch-step">
+        <div class="arch-step-num">1</div>
+        <div class="arch-step-body">
+          <strong>Concept retrieval</strong>
+          <span>The agent calls ChromaDB with each concept as a query, fetching the closest synonym variants stored from the NBME rubric.</span>
+        </div>
+      </div>
+      <div class="arch-step">
+        <div class="arch-step-num">2</div>
+        <div class="arch-step-body">
+          <strong>LLM reasoning</strong>
+          <span>The language model receives the note text alongside the retrieved synonyms and determines whether the concept is present, absent, or uncertain.</span>
+        </div>
+      </div>
+      <div class="arch-step">
+        <div class="arch-step-num">3</div>
+        <div class="arch-step-body">
+          <strong>Evidence extraction</strong>
+          <span>When a concept is found, the agent extracts the exact phrase from the note that supports the verdict — shown highlighted in the result.</span>
+        </div>
+      </div>
+      <div class="arch-step">
+        <div class="arch-step-num">4</div>
+        <div class="arch-step-body">
+          <strong>Score aggregation</strong>
+          <span>Verdicts across all concepts are compiled into a final coverage score, with each concept marked present or missing.</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="about-section">
+  <h2>Clinical cases covered</h2>
+  <p>The system is evaluated on 10 NBME USMLE Step 2 standardized patient cases provided by NBME. Each case has 13–18 required clinical concepts.</p>
+  <div class="cases-table-wrap">
+    <table>
+      <thead>
+        <tr><th>Case</th><th>Clinical Presentation</th><th>Patient</th></tr>
+      </thead>
+      <tbody>
+        {% for case in cases %}
+        <tr>
+          <td><span class="badge badge-blue">Case {{ case.num }}</span></td>
+          <td>{{ case.topic }}</td>
+          <td style="font-size:12px;color:#6c757d;">
+            {% if case.num == 201 %}44-year-old female
+            {% elif case.num == 202 %}35-year-old male
+            {% elif case.num == 203 %}20-year-old female
+            {% elif case.num == 204 %}67-year-old female
+            {% elif case.num == 205 %}26-year-old female
+            {% elif case.num == 206 %}45-year-old female
+            {% elif case.num == 207 %}35-year-old female
+            {% elif case.num == 208 %}20-year-old female
+            {% elif case.num == 209 %}17-year-old male
+            {% elif case.num == 210 %}17-year-old male
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="about-section">
+  <h2>Technology stack</h2>
+  <p>ClinNoteRAG is built on a full-stack Django web application backed by a vector database and large language model inference.</p>
+  <div class="tech-chips">
+    <span class="tech-chip">Django 5</span>
+    <span class="tech-chip">Python 3.13</span>
+    <span class="tech-chip">ChromaDB</span>
+    <span class="tech-chip">Pydantic AI</span>
+    <span class="tech-chip">granite-4.1-30b</span>
+    <span class="tech-chip">LiteLLM</span>
+    <span class="tech-chip">sentence-transformers</span>
+    <span class="tech-chip">SQLite</span>
+    <span class="tech-chip">Chart.js</span>
+  </div>
+</div>
+
+
+{% endblock %}

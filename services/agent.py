@@ -16,10 +16,12 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+import httpx
 import chromadb
 from pydantic import BaseModel, Field
 from pydantic_ai import Agent, RunContext
-from pydantic_ai.models.anthropic import AnthropicModel
+from pydantic_ai.models.openai import OpenAIModel
+from pydantic_ai.providers.openai import OpenAIProvider
 
 # Allow running standalone: python services/agent.py
 if __name__ == "__main__":
@@ -86,7 +88,14 @@ Be conservative: only mark present=True when there is direct textual evidence in
 Do not infer from general clinical context. Cover ALL feature numbers — do not skip any.
 """
 
-_model = AnthropicModel(settings.CLAUDE_MODEL)
+_model = OpenAIModel(
+    settings.CAIR_LLM_MODEL,
+    provider=OpenAIProvider(
+        base_url=settings.CAIR_LLM_URL,
+        api_key=settings.CAIR_LLM_API_KEY,
+        http_client=httpx.AsyncClient(verify=settings.CAIR_LLM_SSL_VERIFY),
+    ),
+)
 
 nbme_agent: Agent[NBMEDeps, CoverageOutput] = Agent(
     _model,
@@ -160,24 +169,24 @@ if __name__ == "__main__":
     import pandas as pd
 
     DATA_DIR = settings.NBME_DATA_DIR
-    notes_df = pd.read_csv(DATA_DIR / "patient_notes.csv")
-    features_df = pd.read_csv(DATA_DIR / "features.csv")
+    notes_df = pd.read_csv(DATA_DIR / "NBME_PN_HISTORY.txt", sep="|")
+    features_df = pd.read_csv(DATA_DIR / "NBME_PN_HISTORY_FEATURES.txt", sep="|")
 
     client = chromadb.PersistentClient(path=settings.CHROMA_DB_PATH)
     collection = client.get_collection("nbme_concepts")
 
-    # Pick first annotated note from case 0
-    sample = notes_df[notes_df["case_num"] == 0].iloc[0]
-    feature_nums = features_df[features_df["case_num"] == 0]["feature_num"].astype(str).tolist()
+    # Pick first note from case 201
+    sample = notes_df[notes_df["CASE_NUM"] == 201].iloc[0]
+    feature_nums = features_df[features_df["CASE_NUM"] == 201]["FEATURE_NUM"].astype(int).astype(str).tolist()
 
     async def run_test() -> None:
-        print(f"Note {sample['pn_num']} | Case 0 | {len(feature_nums)} concepts\n")
-        print(f"Note text:\n{sample['pn_history'][:400]}...\n")
+        print(f"Note {sample['PN_NUM']} | Case 201 | {len(feature_nums)} concepts\n")
+        print(f"Note text:\n{sample['PN_HISTORY'][:400]}...\n")
         print("=" * 60)
 
         verdicts = await assess_note(
-            note_text=str(sample["pn_history"]),
-            case_num=0,
+            note_text=str(sample["PN_HISTORY"]),
+            case_num=201,
             feature_nums=feature_nums,
             chroma_collection=collection,
         )

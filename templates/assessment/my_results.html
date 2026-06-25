@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+{% block title %}My Submissions — ClinNoteRAG{% endblock %}
+{% block content %}
+<style>
+  .page-top { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 28px; flex-wrap: wrap; gap: 12px; }
+  .stats-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 28px; }
+  .stat-mini {
+    background: #fff; border-radius: 8px; padding: 16px 20px;
+    box-shadow: 0 1px 4px rgba(0,0,0,.07);
+  }
+  .stat-mini .n { font-size: 26px; font-weight: 800; line-height: 1; margin-bottom: 3px; }
+  .stat-mini .l { font-size: 11px; color: #6c757d; text-transform: uppercase; letter-spacing: .4px; }
+  .score-pill {
+    display: inline-block; padding: 3px 10px; border-radius: 12px;
+    font-size: 12px; font-weight: 700;
+  }
+  .score-pill.high { background: #d1fae5; color: #065f46; }
+  .score-pill.mid  { background: #fef3c7; color: #92400e; }
+  .score-pill.low  { background: #fee2e2; color: #991b1b; }
+  .empty-state {
+    background: #fff; border-radius: 12px; padding: 64px 32px;
+    text-align: center; box-shadow: 0 1px 4px rgba(0,0,0,.07);
+  }
+  .empty-state .empty-icon { font-size: 48px; margin-bottom: 16px; }
+  .empty-state h3 { font-size: 17px; font-weight: 700; margin-bottom: 8px; }
+  .empty-state p  { font-size: 14px; color: #6c757d; margin-bottom: 24px; }
+  .btn-start {
+    display: inline-block; padding: 11px 24px; background: #0066cc; color: #fff;
+    border-radius: 7px; font-weight: 600; text-decoration: none;
+  }
+  .btn-start:hover { background: #0052a3; color: #fff; text-decoration: none; }
+</style>
+
+<div class="page-top">
+  <div>
+    <h1>My Submissions</h1>
+    <p class="subtitle">Your patient note evaluation history.</p>
+  </div>
+  <a href="/evaluate/" style="display:inline-block;padding:10px 20px;background:#0066cc;color:#fff;border-radius:7px;font-weight:600;font-size:14px;text-decoration:none;">+ New submission</a>
+</div>
+
+{% if runs %}
+<div class="stats-row">
+  <div class="stat-mini">
+    <div class="n" style="color:#0066cc;">{{ runs|length }}</div>
+    <div class="l">Total submissions</div>
+  </div>
+  <div class="stat-mini">
+    <div class="n" style="color:{% if avg_pct >= 75 %}#065f46{% elif avg_pct >= 50 %}#92400e{% else %}#991b1b{% endif %};">{{ avg_pct }}%</div>
+    <div class="l">Average coverage</div>
+  </div>
+  <div class="stat-mini">
+    <div class="n" style="color:#065f46;">{{ best_pct }}%</div>
+    <div class="l">Best attempt</div>
+  </div>
+</div>
+
+<table>
+  <thead>
+    <tr>
+      <th>Date</th>
+      <th>Case</th>
+      <th>Topic</th>
+      <th>Score</th>
+      <th>Coverage</th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for item in runs %}
+    <tr>
+      <td style="font-size:12px; color:#6c757d; white-space:nowrap;">
+        {{ item.run.created_at|date:"M j, Y" }}<br>
+        <span style="font-size:11px;">{{ item.run.created_at|date:"g:i A" }}</span>
+      </td>
+      <td><span class="badge badge-blue">Case {{ item.run.case_num }}</span></td>
+      <td style="font-size:13px;">{{ item.topic }}</td>
+      <td style="font-weight:700;">{{ item.score }} / {{ item.total }}</td>
+      <td><span class="score-pill {{ item.level }}">{{ item.pct }}%</span></td>
+      <td>
+        <a href="/evaluate/result/{{ item.run.pk }}/">View →</a>
+        &nbsp;
+        <a href="/evaluate/?from_run={{ item.run.pk }}" style="color:#6c757d;font-size:12px;">Retry</a>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+{% else %}
+<div class="empty-state">
+  <div class="empty-icon">📋</div>
+  <h3>No submissions yet</h3>
+  <p>Submit your first patient history note and see instant feedback on which clinical concepts you documented.</p>
+  <a href="/evaluate/" class="btn-start">Evaluate a note →</a>
+</div>
+{% endif %}
+
+{% endblock %}

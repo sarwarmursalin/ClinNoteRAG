@@ -1,8 +1,35 @@
-.env
-*.pyc
+# Python
 __pycache__/
-db.sqlite3
-chroma_db/
-scripts/results.csv
-scripts/metrics_summary.csv
+*.py[cod]
+*.pyo
 .venv/
+venv/
+env/
+
+# Django
+db.sqlite3
+*.log
+local_settings.py
+
+# Environment variables
+.env
+.env.*
+
+# macOS
+.DS_Store
+
+# Research output files (large CSVs and logs)
+scripts/results*.csv
+scripts/metrics*.csv
+scripts/judge_results.csv
+scripts/*_log.txt
+
+# Word documents
+*.docx
+
+# IDE
+.vscode/
+.idea/
+
+# uv
+.python-version

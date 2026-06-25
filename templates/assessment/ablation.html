@@ -1,0 +1,242 @@
+{% extends "base.html" %}
+{% block title %}Ablation Study — ClinNoteRAG{% endblock %}
+{% block content %}
+
+<style>
+  .ablation-header {
+    display: flex; align-items: flex-end; justify-content: space-between;
+    margin-bottom: 28px; flex-wrap: wrap; gap: 16px;
+  }
+  .strategy-cards {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px;
+    margin-bottom: 32px;
+  }
+  .strat-card {
+    background: #fff; border-radius: 10px;
+    box-shadow: 0 1px 4px rgba(0,0,0,.08); padding: 20px 24px;
+    border-top: 4px solid;
+  }
+  .strat-card.no_rag     { border-color: #10b981; }
+  .strat-card.naive_rag  { border-color: #3b82f6; }
+  .strat-card.agentic_rag{ border-color: #f59e0b; }
+  .strat-name { font-size: 14px; font-weight: 700; margin-bottom: 4px; }
+  .strat-f1   { font-size: 36px; font-weight: 800; line-height: 1; margin: 6px 0; }
+  .strat-f1.no_rag      { color: #065f46; }
+  .strat-f1.naive_rag   { color: #1e40af; }
+  .strat-f1.agentic_rag { color: #92400e; }
+  .strat-sub  { font-size: 12px; color: #6c757d; }
+  .winner-tag {
+    display: inline-block; margin-left: 8px;
+    background: #d1fae5; color: #065f46;
+    font-size: 11px; font-weight: 700;
+    padding: 1px 8px; border-radius: 10px; vertical-align: middle;
+  }
+  .chart-card {
+    background: #fff; border-radius: 8px;
+    box-shadow: 0 1px 4px rgba(0,0,0,.07);
+    padding: 24px; margin-bottom: 28px;
+  }
+  .chart-title { font-size: 15px; font-weight: 600; margin-bottom: 16px; color: #374151; }
+  .best-no_rag      { background: #d1fae5; color: #065f46; font-weight: 700; border-radius: 4px; }
+  .best-naive_rag   { background: #dbeafe; color: #1e40af; font-weight: 700; border-radius: 4px; }
+  .best-agentic_rag { background: #fef3c7; color: #92400e; font-weight: 700; border-radius: 4px; }
+  .insight-box {
+    background: #f0fdf4; border: 1px solid #6ee7b7; border-radius: 8px;
+    padding: 16px 20px; margin-bottom: 28px; font-size: 14px; line-height: 1.7;
+  }
+  .insight-box h3 { font-size: 14px; font-weight: 700; margin-bottom: 8px; color: #065f46; }
+  .insight-box ul { margin: 0; padding-left: 18px; }
+</style>
+
+<div class="ablation-header">
+  <div>
+    <h1>Ablation Study</h1>
+    <p class="subtitle">Three retrieval strategies evaluated on 2,839 NBME patient notes across 10 cases.</p>
+  </div>
+  <a href="/" style="font-size:13px;color:#6c757d;">← Dashboard</a>
+</div>
+
+{# ── Strategy summary cards ─────────────────────────────────────────────────── #}
+{# Strategy summary cards #}
+<div class="strategy-cards">
+  {% if strategy_data.no_rag %}
+  <div class="strat-card no_rag">
+    <div class="strat-name">No-RAG <span class="winner-tag">Best</span></div>
+    <div class="strat-f1 no_rag">{{ strategy_data.no_rag.overall }}</div>
+    <div class="strat-sub">F1 — zero retrieval, concept names only</div>
+    {% if strategy_data.no_rag.run %}
+    <div class="strat-sub" style="margin-top:6px;">
+      Run #{{ strategy_data.no_rag.run.pk }} ·
+      {{ strategy_data.no_rag.run.notes_evaluated }} notes ·
+      <a href="/runs/{{ strategy_data.no_rag.run.pk }}/">details →</a>
+    </div>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  {% if strategy_data.naive_rag %}
+  <div class="strat-card naive_rag">
+    <div class="strat-name">Naive RAG</div>
+    <div class="strat-f1 naive_rag">{{ strategy_data.naive_rag.overall }}</div>
+    <div class="strat-sub">F1 — bulk ChromaDB retrieval, single prompt</div>
+    {% if strategy_data.naive_rag.run %}
+    <div class="strat-sub" style="margin-top:6px;">
+      Run #{{ strategy_data.naive_rag.run.pk }} ·
+      {{ strategy_data.naive_rag.run.notes_evaluated }} notes ·
+      <a href="/runs/{{ strategy_data.naive_rag.run.pk }}/">details →</a>
+    </div>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  {% if strategy_data.agentic_rag %}
+  <div class="strat-card agentic_rag">
+    <div class="strat-name">Agentic RAG</div>
+    <div class="strat-f1 agentic_rag">{{ strategy_data.agentic_rag.overall }}</div>
+    <div class="strat-sub">F1 — per-concept tool-use retrieval</div>
+    {% if strategy_data.agentic_rag.run %}
+    <div class="strat-sub" style="margin-top:6px;">
+      Run #{{ strategy_data.agentic_rag.run.pk }} ·
+      {{ strategy_data.agentic_rag.run.notes_evaluated }} notes ·
+      <a href="/runs/{{ strategy_data.agentic_rag.run.pk }}/">details →</a>
+    </div>
+    {% endif %}
+  </div>
+  {% endif %}
+</div>
+
+{# ── Key insights ───────────────────────────────────────────────────────────── #}
+<div class="insight-box">
+  <h3>Key Findings</h3>
+  <ul>
+    <li><strong>No-RAG wins (F1=0.9423)</strong> — granite-4.1-30b has sufficient medical knowledge to evaluate standard NBME concepts without retrieval. McNemar's test: p=6.55×10⁻⁷ vs Naive RAG.</li>
+    <li><strong>Naive RAG fails on Case 202</strong> — bulk retrieval causes feature-ID hallucination (890 phantom FPs). LLM generates malformed concept IDs when given cross-case synonym context.</li>
+    <li><strong>Agentic RAG underperforms</strong> due to early tool-call termination by granite-4.1-30b, not an architectural flaw. A stronger instruction-following model would close the gap.</li>
+    <li><strong>Negation concepts are the Achilles heel</strong> — "No X" findings score F1=0.829 vs 0.954 for positive findings, across all strategies.</li>
+  </ul>
+</div>
+
+{# ── Chart ──────────────────────────────────────────────────────────────────── #}
+{% if chart_json %}
+<div class="chart-card">
+  <div class="chart-title">F1 per Case — Three-Way Comparison</div>
+  <canvas id="ablationChart" height="100"></canvas>
+</div>
+{% endif %}
+
+{# ── Per-case table ─────────────────────────────────────────────────────────── #}
+{% if case_rows %}
+<h2>Per-Case Breakdown</h2>
+<table>
+  <thead>
+    <tr>
+      <th>Case</th>
+      <th>Clinical Topic</th>
+      <th style="color:#065f46;">No-RAG F1</th>
+      <th style="color:#1e40af;">Naive RAG F1</th>
+      <th style="color:#92400e;">Agentic RAG F1</th>
+      <th>Best</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for row in case_rows %}
+    <tr>
+      <td><span class="badge badge-blue">Case {{ row.case_num }}</span></td>
+      <td style="font-size:13px;">{{ row.topic }}</td>
+      <td class="{% if row.best == 'no_rag' %}best-no_rag{% endif %}" style="text-align:right;">
+        {% if row.no_rag %}{{ row.no_rag }}{% else %}—{% endif %}
+      </td>
+      <td class="{% if row.best == 'naive_rag' %}best-naive_rag{% endif %}" style="text-align:right;">
+        {% if row.naive_rag %}{{ row.naive_rag }}{% else %}—{% endif %}
+      </td>
+      <td class="{% if row.best == 'agentic_rag' %}best-agentic_rag{% endif %}" style="text-align:right;">
+        {% if row.agentic_rag %}{{ row.agentic_rag }}{% else %}—{% endif %}
+      </td>
+      <td>
+        {% if row.best == "no_rag" %}<span class="badge badge-green">No-RAG</span>
+        {% elif row.best == "naive_rag" %}<span class="badge badge-blue">Naive RAG</span>
+        {% elif row.best == "agentic_rag" %}<span class="badge badge-yellow">Agentic RAG</span>
+        {% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+
+{# ── Comparison to Yaneva et al. ───────────────────────────────────────────── #}
+<h2 style="margin-top:36px;">Comparison to Prior Work</h2>
+<table>
+  <thead>
+    <tr><th>System</th><th>F1</th><th>Requires labeled data?</th><th>New case setup</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>INCITE — rule-based (Yaneva et al. 2024)</td>
+      <td>0.888</td>
+      <td>Hand-crafted lexicons</td>
+      <td>Rebuild lexicons</td>
+    </tr>
+    <tr style="background:#fef3c7;">
+      <td>DeBERTa+MLM — SOTA (Yaneva et al. 2024)</td>
+      <td style="font-weight:700;">0.958</td>
+      <td>~280 labeled notes per case</td>
+      <td>Retrain from scratch</td>
+    </tr>
+    <tr style="background:#d1fae5;">
+      <td><strong>ClinNoteRAG No-RAG (ours)</strong></td>
+      <td style="font-weight:700; color:#065f46;">0.9423</td>
+      <td style="color:#065f46; font-weight:600;">None — zero-shot</td>
+      <td style="color:#065f46;">Add case to prompt</td>
+    </tr>
+    <tr>
+      <td>ClinNoteRAG Naive RAG (ours)</td>
+      <td>0.9233</td>
+      <td>None — zero-shot</td>
+      <td>Add rubric to ChromaDB</td>
+    </tr>
+    <tr>
+      <td>ClinNoteRAG Agentic RAG (ours)</td>
+      <td>0.7886</td>
+      <td>None — zero-shot</td>
+      <td>Add rubric to ChromaDB</td>
+    </tr>
+  </tbody>
+</table>
+<p style="font-size:13px; color:#6c757d; margin-top:10px;">
+  Zero-shot No-RAG closes <strong>87% of the gap</strong> between INCITE (0.888) and supervised SOTA (0.958).
+</p>
+
+{# Chart.js #}
+{% if chart_json %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+  const chartData = {{ chart_json|safe }};
+  new Chart(document.getElementById('ablationChart'), {
+    type: 'bar',
+    data: chartData,
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { position: 'top' },
+        tooltip: {
+          callbacks: {
+            label: ctx => ` ${ctx.dataset.label}: ${ctx.parsed.y.toFixed(4)}`
+          }
+        }
+      },
+      scales: {
+        y: {
+          min: 0.5, max: 1.0,
+          ticks: { callback: v => v.toFixed(2) },
+          grid: { color: 'rgba(0,0,0,.05)' },
+          title: { display: true, text: 'F1 Score', font: { size: 12 } },
+        },
+        x: { grid: { display: false } },
+      },
+    },
+  });
+</script>
+{% endif %}
+
+{% endblock %}

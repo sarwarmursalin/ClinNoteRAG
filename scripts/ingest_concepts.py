@@ -1,7 +1,7 @@
 """Task 1 — Ingest NBME rubric concepts into ChromaDB.
 
-Reads features.csv, embeds each concept with sentence-transformers,
-and stores in a persistent ChromaDB collection.
+Reads NBME_PN_HISTORY_FEATURES.txt, embeds each concept with
+sentence-transformers, and stores in a persistent ChromaDB collection.
 
 Run:
     python scripts/ingest_concepts.py
@@ -29,28 +29,25 @@ CHROMA_PATH = settings.CHROMA_DB_PATH
 
 
 def parse_synonyms(feature_text: str) -> list[str]:
-    """Split 'A-B-OR-C-D' into ['A B', 'C D'] and clean hyphens."""
     parts = feature_text.split("-OR-")
     return [p.replace("-", " ").strip() for p in parts]
 
 
 def build_document(synonyms: list[str]) -> str:
-    """Build the text stored in ChromaDB for one concept."""
     primary = synonyms[0]
     all_variants = ", ".join(synonyms)
     return f"Concept: {primary}\nSynonyms: {all_variants}"
 
 
 def main() -> None:
-    print("ClinNoteRAG — Concept Ingestion")
+    print("ClinNoteRAG — Concept Ingestion (new NBME dataset)")
     print("=" * 50)
 
-    df = pd.read_csv(DATA_DIR / "features.csv")
-    print(f"Loaded {len(df)} concepts from features.csv\n")
+    df = pd.read_csv(DATA_DIR / "NBME_PN_HISTORY_FEATURES.txt", sep="|")
+    print(f"Loaded {len(df)} concepts from NBME_PN_HISTORY_FEATURES.txt\n")
 
     client = chromadb.PersistentClient(path=CHROMA_PATH)
 
-    # Wipe and recreate to ensure clean state on re-run
     try:
         client.delete_collection("nbme_concepts")
     except Exception:
@@ -61,34 +58,30 @@ def main() -> None:
     )
 
     total = 0
-    for case_num in range(10):
-        case_df = df[df["case_num"] == case_num].reset_index(drop=True)
-        if case_df.empty:
-            continue
+    for case_num in sorted(df["CASE_NUM"].unique()):
+        case_df = df[df["CASE_NUM"] == case_num].reset_index(drop=True)
 
-        ids, documents, metadatas, embeddings = [], [], [], []
+        ids, documents, metadatas = [], [], []
 
         for _, row in case_df.iterrows():
-            feature_num = str(row["feature_num"])
-            synonyms = parse_synonyms(str(row["feature_text"]))
+            feature_num = str(int(row["FEATURE_NUM"]))
+            synonyms = parse_synonyms(str(row["FEATURE_TEXT"]))
             doc = build_document(synonyms)
 
             ids.append(f"{case_num}_{feature_num}")
             documents.append(doc)
             metadatas.append({
-                "case_num": case_num,
+                "case_num": int(case_num),
                 "feature_num": feature_num,
-                "feature_text": str(row["feature_text"]),
+                "feature_text": str(row["FEATURE_TEXT"]),
             })
 
         vectors = embed(documents)
-        embeddings = vectors
-
         collection.add(
             ids=ids,
             documents=documents,
             metadatas=metadatas,
-            embeddings=embeddings,
+            embeddings=vectors,
         )
 
         count = len(ids)

@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+{% block title %}My Profile — ClinNoteRAG{% endblock %}
+{% block content %}
+<style>
+  .profile-header {
+    background: linear-gradient(135deg, #1a1a2e, #16213e);
+    border-radius: 14px; padding: 36px 40px; margin-bottom: 32px;
+    display: flex; align-items: center; gap: 28px; color: #fff;
+  }
+  .profile-avatar {
+    width: 72px; height: 72px; border-radius: 50%; flex-shrink: 0;
+    background: linear-gradient(135deg, #0066cc, #60a5fa);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 26px; font-weight: 800; color: #fff;
+  }
+  .profile-name { font-size: 22px; font-weight: 800; margin-bottom: 4px; }
+  .profile-meta { font-size: 13px; color: #94a3b8; }
+  .profile-meta span { color: #60a5fa; font-weight: 600; margin-right: 16px; }
+  .stats-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 32px; }
+  .stat-card {
+    background: #fff; border-radius: 10px; padding: 20px 24px;
+    box-shadow: 0 1px 4px rgba(0,0,0,.07); text-align: center;
+  }
+  .stat-card .num  { font-size: 36px; font-weight: 800; line-height: 1; margin-bottom: 6px; }
+  .stat-card .lbl  { font-size: 12px; color: #6c757d; text-transform: uppercase; letter-spacing: .5px; }
+  .info-card {
+    background: #fff; border-radius: 10px; padding: 24px 28px;
+    box-shadow: 0 1px 4px rgba(0,0,0,.07); margin-bottom: 20px;
+  }
+  .info-card h2 { font-size: 15px; font-weight: 700; margin-bottom: 18px; color: #374151; }
+  .info-row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 11px 0; border-bottom: 1px solid #f1f3f5; font-size: 14px;
+  }
+  .info-row:last-child { border-bottom: none; padding-bottom: 0; }
+  .info-label { color: #6c757d; font-weight: 500; }
+  .info-value { font-weight: 600; color: #111827; }
+  .action-row { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 8px; }
+  .btn-action {
+    display: inline-block; padding: 10px 22px; border-radius: 7px;
+    font-size: 14px; font-weight: 600; text-decoration: none; transition: all .15s;
+  }
+  .btn-primary-action { background: #0066cc; color: #fff; }
+  .btn-primary-action:hover { background: #0052a3; color: #fff; text-decoration: none; }
+  .btn-secondary-action { background: #f1f3f5; color: #374151; }
+  .btn-secondary-action:hover { background: #e5e7eb; text-decoration: none; }
+</style>
+
+{# Header #}
+<div class="profile-header">
+  <div class="profile-avatar">
+    {{ user.first_name|first|upper }}{{ user.last_name|first|upper }}
+  </div>
+  <div>
+    <div class="profile-name">{{ user.get_full_name|default:user.username }}</div>
+    <div class="profile-meta">
+      <span>Student</span>
+      {% if profile.student_id %}Student ID: {{ profile.student_id }}{% endif %}
+    </div>
+  </div>
+</div>
+
+{# Stats #}
+<div class="stats-row">
+  <div class="stat-card">
+    <div class="num" style="color:#0066cc;">{{ total_subs }}</div>
+    <div class="lbl">Submissions</div>
+  </div>
+  <div class="stat-card">
+    <div class="num" style="color:{% if avg_pct >= 75 %}#065f46{% elif avg_pct >= 50 %}#92400e{% else %}#991b1b{% endif %};">{{ avg_pct }}%</div>
+    <div class="lbl">Avg. coverage</div>
+  </div>
+  <div class="stat-card">
+    <div class="num" style="color:#065f46;">{{ best_pct }}%</div>
+    <div class="lbl">Best attempt</div>
+  </div>
+</div>
+
+{# Account info #}
+<div class="info-card">
+  <h2>Account details</h2>
+  <div class="info-row">
+    <span class="info-label">Full name</span>
+    <span class="info-value">{{ user.get_full_name|default:"—" }}</span>
+  </div>
+  <div class="info-row">
+    <span class="info-label">Username</span>
+    <span class="info-value">{{ user.username }}</span>
+  </div>
+  {% if user.email %}
+  <div class="info-row">
+    <span class="info-label">Email</span>
+    <span class="info-value">{{ user.email }}</span>
+  </div>
+  {% endif %}
+  <div class="info-row">
+    <span class="info-label">Student ID</span>
+    <span class="info-value">{{ profile.student_id|default:"—" }}</span>
+  </div>
+  <div class="info-row">
+    <span class="info-label">Member since</span>
+    <span class="info-value">{{ user.date_joined|date:"F j, Y" }}</span>
+  </div>
+</div>
+
+{# Quick actions #}
+<div class="info-card">
+  <h2>Quick actions</h2>
+  <div class="action-row">
+    <a href="/evaluate/" class="btn-action btn-primary-action">Evaluate a note →</a>
+    <a href="/my-results/" class="btn-action btn-secondary-action">My submissions</a>
+    <a href="/logout/" class="btn-action btn-secondary-action">Sign out</a>
+  </div>
+</div>
+
+{% endblock %}

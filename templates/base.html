@@ -7,11 +7,30 @@
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: system-ui, -apple-system, sans-serif; background: #f8f9fa; color: #212529; }
-    nav { background: #1a1a2e; color: #fff; padding: 0 32px; display: flex; align-items: center; gap: 24px; height: 52px; }
-    nav a { color: #e0e0e0; text-decoration: none; font-size: 14px; }
-    nav a:hover { color: #fff; }
-    nav .brand { font-weight: 700; font-size: 17px; color: #fff; margin-right: 8px; }
-    .container { max-width: 1000px; margin: 36px auto; padding: 0 20px; }
+    nav {
+      background: #1a1a2e; color: #fff; padding: 0 32px;
+      display: flex; align-items: center; gap: 8px; height: 52px;
+    }
+    nav .brand { font-weight: 800; font-size: 17px; color: #fff; margin-right: 16px; text-decoration: none; letter-spacing: -.3px; }
+    nav .brand span { color: #60a5fa; }
+    nav .nav-links { display: flex; align-items: center; gap: 4px; flex: 1; }
+    nav .nav-links a {
+      color: #cbd5e1; text-decoration: none; font-size: 13px; font-weight: 500;
+      padding: 6px 12px; border-radius: 5px; transition: background .12s, color .12s;
+    }
+    nav .nav-links a:hover { background: rgba(255,255,255,.1); color: #fff; }
+    nav .nav-links a.active { background: rgba(255,255,255,.12); color: #fff; }
+    nav .nav-right { display: flex; align-items: center; gap: 8px; margin-left: auto; }
+    nav .nav-user { font-size: 13px; color: #94a3b8; }
+    nav .btn-nav {
+      padding: 6px 14px; border-radius: 5px; font-size: 13px; font-weight: 600;
+      text-decoration: none; transition: background .12s;
+    }
+    nav .btn-primary-nav { background: #0066cc; color: #fff; }
+    nav .btn-primary-nav:hover { background: #0052a3; color: #fff; }
+    nav .btn-logout { background: rgba(255,255,255,.08); color: #cbd5e1; border: 1px solid rgba(255,255,255,.15); }
+    nav .btn-logout:hover { background: rgba(255,255,255,.15); color: #fff; }
+    .container { max-width: 1040px; margin: 36px auto; padding: 0 20px; }
     h1 { font-size: 22px; font-weight: 700; margin-bottom: 6px; }
     h2 { font-size: 17px; font-weight: 600; margin: 28px 0 12px; }
     .subtitle { color: #6c757d; font-size: 14px; margin-bottom: 28px; }
@@ -23,28 +42,71 @@
     a { color: #0066cc; text-decoration: none; }
     a:hover { text-decoration: underline; }
     .badge { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 12px; font-weight: 600; }
-    .badge-green { background: #d1fae5; color: #065f46; }
+    .badge-green  { background: #d1fae5; color: #065f46; }
     .badge-yellow { background: #fef3c7; color: #92400e; }
-    .badge-red { background: #fee2e2; color: #991b1b; }
-    .badge-blue { background: #dbeafe; color: #1e40af; }
-    .badge-gray { background: #f3f4f6; color: #374151; }
+    .badge-red    { background: #fee2e2; color: #991b1b; }
+    .badge-blue   { background: #dbeafe; color: #1e40af; }
+    .badge-gray   { background: #f3f4f6; color: #374151; }
     .empty { color: #9ca3af; font-style: italic; font-size: 14px; padding: 20px 0; }
     .card { background: #fff; border-radius: 8px; box-shadow: 0 1px 4px rgba(0,0,0,.07); padding: 20px; margin-bottom: 16px; }
-    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
     .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 28px; }
     .stat { background: #fff; border-radius: 8px; padding: 16px 20px; box-shadow: 0 1px 4px rgba(0,0,0,.07); }
     .stat-label { font-size: 12px; color: #6c757d; text-transform: uppercase; letter-spacing: .5px; }
     .stat-value { font-size: 28px; font-weight: 700; margin-top: 4px; }
     code { background: #f1f3f5; padding: 2px 6px; border-radius: 4px; font-size: 12px; }
+    /* Flash messages */
+    .messages { list-style: none; margin-bottom: 20px; }
+    .messages li {
+      padding: 10px 16px; border-radius: 6px; font-size: 14px; margin-bottom: 8px;
+    }
+    .messages li.success { background: #d1fae5; color: #065f46; }
+    .messages li.error   { background: #fee2e2; color: #991b1b; }
   </style>
 </head>
 <body>
   <nav>
-    <a href="/" class="brand">ClinNoteRAG</a>
-    <a href="/">Dashboard</a>
-    <a href="/admin/">Admin</a>
+    <a href="/home/" class="brand">Clin<span>Note</span>RAG</a>
+
+    {% if user.is_authenticated %}
+      <div class="nav-links">
+        {% if user.profile.is_faculty %}
+          <a href="/dashboard/">Dashboard</a>
+          <a href="/about/">About</a>
+          {% if user.is_superuser %}
+            <a href="/ablation/">Ablation Study</a>
+            <a href="/admin/">Admin</a>
+          {% endif %}
+        {% else %}
+          <a href="/evaluate/" class="btn-nav btn-primary-nav" style="margin-right:4px;">Evaluate Note</a>
+          <a href="/my-results/">My Submissions</a>
+          <a href="/about/">About</a>
+        {% endif %}
+      </div>
+      <div class="nav-right">
+        <a href="/profile/" class="nav-user" style="text-decoration:none;color:#94a3b8;">
+          {{ user.get_full_name|default:user.username }}
+        </a>
+        <a href="/logout/" class="btn-nav btn-logout">Sign out</a>
+      </div>
+    {% else %}
+      <div class="nav-links">
+        <a href="/about/">About</a>
+      </div>
+      <div class="nav-right">
+        <a href="/login/"  class="btn-nav btn-primary-nav">Sign in</a>
+        <a href="/signup/" class="btn-nav btn-logout">Register</a>
+      </div>
+    {% endif %}
   </nav>
+
   <div class="container">
+    {% if messages %}
+    <ul class="messages">
+      {% for msg in messages %}
+      <li class="{{ msg.tags }}">{{ msg }}</li>
+      {% endfor %}
+    </ul>
+    {% endif %}
     {% block content %}{% endblock %}
   </div>
 </body>
