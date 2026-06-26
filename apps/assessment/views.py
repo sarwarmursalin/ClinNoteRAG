@@ -348,10 +348,21 @@ def evaluate_note_view(request):
             feature_nums = features_df[features_df["CASE_NUM"] == case_num]["FEATURE_NUM"].tolist()
             collection   = _get_chroma()
 
-            verdicts = asyncio.run(assess_note_naive(
-                note_text=note_text, case_num=case_num,
-                feature_nums=feature_nums, chroma_collection=collection,
-            ))
+            try:
+                verdicts = asyncio.run(assess_note_naive(
+                    note_text=note_text, case_num=case_num,
+                    feature_nums=feature_nums, chroma_collection=collection,
+                ))
+            except Exception as e:
+                err = str(e)
+                if "503" in err or "502" in err or "Service Unavailable" in err or "unavailable" in err.lower():
+                    messages.error(request, "The AI server is temporarily unavailable. Please make sure you are connected to MUN VPN and try again in a few minutes.")
+                else:
+                    messages.error(request, f"Evaluation failed: {err[:200]}")
+                return render(request, "assessment/evaluate.html", {
+                    "form": form, "case_cards": case_cards, "prev_run_id": prefill_run_id or "",
+                    "profile": profile,
+                })
 
             run = EvaluationRun.objects.create(
                 strategy     = "naive_rag",
