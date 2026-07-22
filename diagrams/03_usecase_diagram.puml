@@ -1,0 +1,67 @@
+@startuml ClinNoteRAG_UseCaseDiagram
+title ClinNoteRAG — Use Case Diagram
+
+skinparam actorBorderColor #1A50C8
+skinparam actorBackgroundColor #EBF0FB
+skinparam usecaseBorderColor #374151
+skinparam usecaseBackgroundColor #F8FAFD
+skinparam ArrowColor #374151
+skinparam shadowing false
+
+left to right direction
+
+actor "Medical Student" as Student #LightBlue
+actor "Faculty / Grader" as Faculty #LightGreen
+actor "System Admin" as Admin #Orange
+actor "CAIR LLM Server" as LLM #Pink
+actor "ChromaDB" as Chroma #Pink
+
+rectangle "ClinNoteRAG System" {
+
+  ' Student use cases
+  usecase "Register / Login" as UC1
+  usecase "Select Clinical Case" as UC2
+  usecase "Submit Patient Note" as UC3
+  usecase "View Coverage Score" as UC4
+  usecase "View Per-Concept Evidence" as UC5
+  usecase "View Submission History" as UC6
+
+  ' Faculty use cases
+  usecase "View Grader Dashboard" as UC7
+  usecase "Review Student Submissions" as UC8
+  usecase "Export Submissions (CSV)" as UC9
+
+  ' Admin use cases
+  usecase "Manage Users & Roles" as UC10
+  usecase "View Admin Dashboard" as UC11
+  usecase "View Ablation Study Results" as UC12
+
+  ' External system use cases
+  usecase "Grade Patient Note (LLM)" as UC13
+  usecase "Retrieve Concept Embeddings" as UC14
+}
+
+Student --> UC1
+Student --> UC2
+Student --> UC3
+Student --> UC4
+Student --> UC5
+Student --> UC6
+
+Faculty --> UC1
+Faculty --> UC7
+Faculty --> UC8
+Faculty --> UC9
+
+Admin --> UC1
+Admin --> UC10
+Admin --> UC11
+Admin --> UC12
+
+UC3 ..> UC13 : <<include>>
+UC3 ..> UC14 : <<include>>
+
+LLM --> UC13
+Chroma --> UC14
+
+@enduml

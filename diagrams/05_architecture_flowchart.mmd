@@ -1,0 +1,34 @@
+---
+title: ClinNoteRAG — Agentic RAG Pipeline Architecture
+---
+flowchart TD
+    A(["📝 Student Patient Note\n+ Clinical Case Number"]) --> B
+
+    subgraph Pipeline["Agentic RAG Pipeline"]
+        B["Step 1 — Input Processing\nExtract case features from NBME rubric"]
+        B --> C["Step 2 — Concept Retrieval\nQuery ChromaDB for each concept's\nsynonyms and descriptions"]
+        C --> D["Step 3 — LLM Reasoning\nGranite-4.1-30b decides PRESENT / ABSENT\nand extracts evidence quote per concept"]
+        D --> E["Step 4 — Score Aggregation\nCount present concepts / total concepts\n= Coverage Percentage"]
+    end
+
+    E --> F(["📊 Grading Result\nCoverage Score · Per-Concept Verdicts\nEvidence Quotes"])
+
+    subgraph DataStores["Data Layer"]
+        G[("ChromaDB\n143 NBME Concepts\nVector Embeddings")]
+        H[("SQLite Database\nUsers · Runs · Verdicts")]
+    end
+
+    subgraph External["External Service — MUN VPN"]
+        I["CAIR LiteLLM Proxy\ngranite-4.1-30b"]
+    end
+
+    C <--> G
+    D --> I
+    I --> D
+    E --> H
+
+    style Pipeline fill:#EBF0FB,stroke:#1A50C8
+    style DataStores fill:#D1FAE5,stroke:#065F46
+    style External fill:#FEE2E2,stroke:#991B1B
+    style A fill:#1A50C8,color:#fff,stroke:#1A50C8
+    style F fill:#065F46,color:#fff,stroke:#065F46

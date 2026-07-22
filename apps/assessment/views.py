@@ -1,7 +1,10 @@
 from __future__ import annotations
 
 import asyncio
+import csv
 import json
+import re
+from collections import defaultdict
 from functools import wraps
 from pathlib import Path
 
@@ -12,6 +15,7 @@ from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
+from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 
 from services.naive_rag import assess_note_naive
@@ -45,6 +49,37 @@ def _load_features() -> pd.DataFrame:
     df["CASE_NUM"]    = df["CASE_NUM"].astype(int)
     df["FEATURE_NUM"] = df["FEATURE_NUM"].astype(int).astype(str)
     return df
+
+
+_AGE_CONCEPT_RE   = re.compile(r'\b\d+\s*year', re.IGNORECASE)
+_AGE_IN_NOTE_RE   = re.compile(r'\b(\d+)[\s\-]*(year|yr|y\.?o\.?|years?\s*old)', re.IGNORECASE)
+_GENDER_IN_NOTE_RE = re.compile(
+    r'\b(male|female|man|woman|boy|girl|he\b|she\b|his\b|her\b|mr\.?|ms\.?|mrs\.?)\b',
+    re.IGNORECASE,
+)
+
+def _apply_flex_age_gender(verdicts, note_text):
+    """Give credit for any documented age and any documented gender.
+
+    The NBME rubric ties age/gender to the case patient (e.g. '17 year', 'Male').
+    For web evaluation we award these if the student documented *any* age or *any*
+    gender — the clinical skill being tested is whether they asked, not whether
+    they matched a specific demographic.
+    """
+    has_age    = bool(_AGE_IN_NOTE_RE.search(note_text))
+    has_gender = bool(_GENDER_IN_NOTE_RE.search(note_text))
+
+    for v in verdicts:
+        name = v.concept.strip().lower()
+        if _AGE_CONCEPT_RE.search(name) and has_age and not v.present:
+            v.present = True
+            m = _AGE_IN_NOTE_RE.search(note_text)
+            v.evidence = m.group(0) if m else v.evidence
+        elif name in ("male", "female") and has_gender and not v.present:
+            v.present = True
+            m = _GENDER_IN_NOTE_RE.search(note_text)
+            v.evidence = m.group(0) if m else v.evidence
+    return verdicts
 
 
 def faculty_required(view_fn):
@@ -173,7 +208,6 @@ def faculty_dashboard(request):
     research_runs = EvaluationRun.objects.filter(f1__isnull=False).order_by("-created_at")
 
     # Summary stats
-    # Count distinct authenticated users + distinct legacy student names separately
     auth_students = submissions.filter(user__isnull=False).exclude(user__username="anonymous_student").values("user").distinct().count()
     legacy_students = submissions.filter(user__isnull=True).values("student_name").distinct().count()
     anon_students = submissions.filter(user__username="anonymous_student").values("student_name").distinct().count()
@@ -181,12 +215,52 @@ def faculty_dashboard(request):
     all_pcts = [r["pct"] for r in submission_rows]
     avg_score = round(sum(all_pcts) / len(all_pcts)) if all_pcts else 0
 
+    # Per-case chart data
+    case_buckets = defaultdict(list)
+    for r in submission_rows:
+        if r["run"].case_num:
+            case_buckets[r["run"].case_num].append(r["pct"])
+    sorted_cases = sorted(case_buckets.keys())
+    case_labels  = [f"Case {c}" for c in sorted_cases]
+    case_avgs    = [round(sum(case_buckets[c]) / len(case_buckets[c])) for c in sorted_cases]
+    case_counts  = [len(case_buckets[c]) for c in sorted_cases]
+
+    # Most-missed concepts (from ConceptVerdict of student submissions)
+    student_run_ids = [r["run"].pk for r in submission_rows]
+    missed_counts = defaultdict(lambda: {"count": 0, "total": 0, "case_num": None})
+    if student_run_ids:
+        verdicts_qs = ConceptVerdict.objects.filter(run_id__in=student_run_ids)
+        for v in verdicts_qs:
+            key = (v.case_num, v.concept)
+            missed_counts[key]["total"] += 1
+            missed_counts[key]["case_num"] = v.case_num
+            if not v.predicted:
+                missed_counts[key]["count"] += 1
+    missed_list = [
+        {
+            "concept":   k[1],
+            "case_num":  v["case_num"],
+            "miss_pct":  round(v["count"] / v["total"] * 100) if v["total"] else 0,
+        }
+        for k, v in missed_counts.items() if v["total"] >= 2
+    ]
+    missed_list.sort(key=lambda x: -x["miss_pct"])
+    missed_list = missed_list[:8]
+
+    dash_chart_json = json.dumps({
+        "case_labels": case_labels,
+        "case_avgs":   case_avgs,
+        "case_counts": case_counts,
+        "missed":      missed_list,
+    }) if submission_rows else None
+
     return render(request, "assessment/faculty_dashboard.html", {
-        "submission_rows":  submission_rows,
-        "research_runs":    research_runs,
-        "unique_students":  unique_students,
+        "submission_rows":   submission_rows,
+        "research_runs":     research_runs,
+        "unique_students":   unique_students,
         "total_submissions": len(submission_rows),
-        "avg_score":        avg_score,
+        "avg_score":         avg_score,
+        "dash_chart_json":   dash_chart_json,
     })
 
 
@@ -337,6 +411,22 @@ def evaluate_note_view(request):
         except EvaluationRun.DoesNotExist:
             prefill_run_id = None
 
+    case_cards = [
+        {"num": num, "label": label, "description": CASE_DESCRIPTIONS.get(num, "")}
+        for num, label in [
+            (201, "Case 201 — Irregular menses (44F)"),
+            (202, "Case 202 — Epigastric discomfort (35M)"),
+            (203, "Case 203 — Headache (20F)"),
+            (204, "Case 204 — Sleep disturbance / grief (67F)"),
+            (205, "Case 205 — Palpitations / heart racing (26F)"),
+            (206, "Case 206 — Anxiety / nervousness (45F)"),
+            (207, "Case 207 — Heavy periods / weight gain (35F)"),
+            (208, "Case 208 — Right lower quadrant pain (20F)"),
+            (209, "Case 209 — Chest pain / pleuritic (17M)"),
+            (210, "Case 210 — Palpitations / heart pounding (17M)"),
+        ]
+    ]
+
     if request.method == "POST":
         form = NoteEvaluationForm(request.POST)
         if form.is_valid():
@@ -353,10 +443,13 @@ def evaluate_note_view(request):
                     note_text=note_text, case_num=case_num,
                     feature_nums=feature_nums, chroma_collection=collection,
                 ))
+                verdicts = _apply_flex_age_gender(verdicts, note_text)
             except Exception as e:
                 err = str(e)
-                if "503" in err or "502" in err or "Service Unavailable" in err or "unavailable" in err.lower():
-                    messages.error(request, "The AI server is temporarily unavailable. Please make sure you are connected to MUN VPN and try again in a few minutes.")
+                vpn_keywords = ("503", "502", "Service Unavailable", "Connection error",
+                                "ConnectError", "connection attempt", "unavailable")
+                if any(kw.lower() in err.lower() for kw in vpn_keywords):
+                    messages.error(request, "The AI server is unreachable. Please make sure you are connected to MUN VPN and try again.")
                 else:
                     messages.error(request, f"Evaluation failed: {err[:200]}")
                 return render(request, "assessment/evaluate.html", {
@@ -390,22 +483,6 @@ def evaluate_note_view(request):
             return redirect(result_url)
     else:
         form = NoteEvaluationForm(initial=initial)
-
-    case_cards = [
-        {"num": num, "label": label, "description": CASE_DESCRIPTIONS.get(num, "")}
-        for num, label in [
-            (201, "Case 201 — Irregular menses (44F)"),
-            (202, "Case 202 — Epigastric discomfort (35M)"),
-            (203, "Case 203 — Headache (20F)"),
-            (204, "Case 204 — Sleep disturbance / grief (67F)"),
-            (205, "Case 205 — Palpitations / heart racing (26F)"),
-            (206, "Case 206 — Anxiety / nervousness (45F)"),
-            (207, "Case 207 — Heavy periods / weight gain (35F)"),
-            (208, "Case 208 — Right lower quadrant pain (20F)"),
-            (209, "Case 209 — Chest pain / pleuritic (17M)"),
-            (210, "Case 210 — Palpitations / heart pounding (17M)"),
-        ]
-    ]
 
     return render(request, "assessment/evaluate.html", {
         "form":         form,
@@ -525,6 +602,64 @@ def my_results_view(request):
     avg_pct  = round(sum(r["pct"] for r in runs) / len(runs)) if runs else 0
     best_pct = max((r["pct"] for r in runs), default=0)
 
-    return render(request, "assessment/my_results.html", {
-        "runs": runs, "avg_pct": avg_pct, "best_pct": best_pct,
+    # Chart: progress over time (chronological order)
+    chron = list(reversed(runs))
+    chart_labels   = [r["run"].created_at.strftime("%-d %b") for r in chron]
+    chart_values   = [r["pct"] for r in chron]
+    chart_tooltips = [f"Case {r['run'].case_num} · {r['run'].created_at.strftime('%b %-d, %Y')}" for r in chron]
+
+    # Per-case best scores
+    case_best = defaultdict(lambda: {"best_pct": 0, "count": 0})
+    for r in runs:
+        cn = r["run"].case_num
+        if cn:
+            case_best[cn]["count"] += 1
+            case_best[cn]["best_pct"] = max(case_best[cn]["best_pct"], r["pct"])
+    by_case = [
+        {"case_num": cn, "best_pct": v["best_pct"], "count": v["count"]}
+        for cn, v in sorted(case_best.items())
+    ]
+
+    chart_json = json.dumps({
+        "labels":   chart_labels,
+        "values":   chart_values,
+        "tooltips": chart_tooltips,
+        "by_case":  by_case,
     })
+
+    return render(request, "assessment/my_results.html", {
+        "runs":             runs,
+        "avg_pct":          avg_pct,
+        "best_pct":         best_pct,
+        "cases_attempted":  len(case_best),
+        "chart_json":       chart_json,
+    })
+
+
+@faculty_required
+def export_submissions_csv(request):
+    """Download all student submissions as CSV."""
+    submissions = (
+        EvaluationRun.objects
+        .filter(note_text__gt="")
+        .exclude(student_name="")
+        .order_by("-created_at")
+    )
+    response = HttpResponse(content_type="text/csv")
+    response["Content-Disposition"] = 'attachment; filename="clinnoterag_submissions.csv"'
+    writer = csv.writer(response)
+    writer.writerow(["Date", "Student Name", "Student ID", "Case", "Topic", "Score", "Total", "Coverage %"])
+    for run in submissions:
+        verdicts = ConceptVerdict.objects.filter(run=run)
+        total   = verdicts.count()
+        present = verdicts.filter(predicted=True).count()
+        pct     = round(present / total * 100) if total else 0
+        writer.writerow([
+            run.created_at.strftime("%Y-%m-%d %H:%M"),
+            run.student_name or (run.user.get_full_name() if run.user else ""),
+            run.student_id or "",
+            run.case_num or "",
+            _CASE_TOPICS.get(run.case_num, ""),
+            present, total, pct,
+        ])
+    return response

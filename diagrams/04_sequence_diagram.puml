@@ -1,0 +1,45 @@
+@startuml ClinNoteRAG_SequenceDiagram
+title ClinNoteRAG — Sequence Diagram\nStudent Note Submission & Agentic RAG Grading
+
+skinparam sequenceArrowColor #1A50C8
+skinparam sequenceLifeLineBorderColor #374151
+skinparam participantBorderColor #1A50C8
+skinparam participantBackgroundColor #EBF0FB
+skinparam actorBorderColor #1A50C8
+skinparam shadowing false
+
+actor "Student" as S
+participant "Django View\n(evaluate_note_view)" as V
+participant "Pydantic AI\nAgent" as A
+participant "ChromaDB\n(Concept Retriever)" as C
+participant "CAIR LLM\n(granite-4.1-30b)" as L
+database "SQLite\n(Django ORM)" as DB
+
+== Note Submission ==
+S -> V : POST /evaluate/\n(case_num, note_text)
+V -> V : Validate form\nCheck auth & role
+
+== Agentic RAG Pipeline ==
+V -> A : assess_note(note_text, case_num)
+A -> A : Parse feature numbers\nfor this clinical case
+
+loop for each concept (13–17 concepts)
+  A -> C : retrieve_concept_info(feature_num)
+  C --> A : synonym list + description
+  A -> L : "Is concept X present in this note?\n[note_text] + [concept info]"
+  L --> A : verdict: PRESENT / ABSENT\nevidence: "quoted text span"
+end
+
+A --> V : List of ConceptVerdict objects
+
+== Save & Respond ==
+V -> DB : Save EvaluationRun + ConceptVerdicts
+DB --> V : run.id
+
+V --> S : Redirect to /evaluate/result/{run.id}/
+S -> V : GET /evaluate/result/{run.id}/
+V -> DB : Fetch EvaluationRun + verdicts
+DB --> V : run + verdicts
+V --> S : Render result page\n(score, evidence per concept)
+
+@enduml

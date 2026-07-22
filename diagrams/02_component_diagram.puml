@@ -1,0 +1,48 @@
+@startuml ClinNoteRAG_ComponentDiagram
+title ClinNoteRAG — Component Diagram
+
+skinparam componentBorderColor #1A50C8
+skinparam componentBackgroundColor #EBF0FB
+skinparam packageBorderColor #374151
+skinparam packageBackgroundColor #F8FAFD
+skinparam databaseBorderColor #065F46
+skinparam databaseBackgroundColor #D1FAE5
+skinparam cloudBorderColor #991B1B
+skinparam cloudBackgroundColor #FEE2E2
+skinparam ArrowColor #374151
+skinparam shadowing false
+skinparam linetype ortho
+
+actor "Student / Faculty / Admin" as User
+
+package "Django Web Application" {
+  [Views Layer\nevaluate · dashboard · profile] as Views
+  [Role-Based Auth Middleware\nsuperuser / faculty / student] as Auth
+  [Form Validation\nEvaluateNoteForm] as Forms
+  [Django ORM] as ORM
+}
+
+package "AI Pipeline — Pydantic AI" {
+  [Agentic RAG Orchestrator\ntool-calling loop] as Agent
+  [Concept Retriever\nvector similarity search] as Retriever
+  [Score Aggregator\nPresent / Absent / Partial] as Scorer
+}
+
+database "SQLite\nUsers · Runs · Verdicts" as SQLite
+database "ChromaDB\n143 NBME concepts\nvector embeddings" as Chroma
+
+cloud "CAIR LiteLLM Proxy\ngranite-4.1-30b\n(MUN VPN Required)" as CAIR
+
+User --> Views        : HTTP request
+Views --> Auth
+Views --> Forms
+Views --> Agent       : submit note
+Views --> ORM         : read/write data
+ORM <--> SQLite
+
+Agent --> Retriever
+Agent --> Scorer
+Retriever <--> Chroma : vector search
+Agent --> CAIR        : LLM API call
+
+@enduml

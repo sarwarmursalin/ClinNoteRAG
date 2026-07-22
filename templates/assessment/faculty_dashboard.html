@@ -26,9 +26,40 @@
     display: inline-block; padding: 2px 9px; border-radius: 12px;
     font-size: 11px; font-weight: 700;
   }
-  .strat-no_rag      { background: #d1fae5; color: #065f46; }
-  .strat-naive_rag   { background: #dbeafe; color: #1e40af; }
-  .strat-agentic_rag { background: #fef3c7; color: #92400e; }
+  .strat-no_rag        { background: #d1fae5; color: #065f46; }
+  .strat-naive_rag     { background: #dbeafe; color: #1e40af; }
+  .strat-agentic_rag   { background: #fef3c7; color: #92400e; }
+
+  /* ── Charts row ── */
+  .dash-charts { display: grid; grid-template-columns: 3fr 2fr; gap: 16px; margin-bottom: 28px; }
+  @media (max-width: 720px) { .dash-charts { grid-template-columns: 1fr; } }
+  .chart-card {
+    background: #fff; border-radius: 10px; box-shadow: 0 1px 4px rgba(0,0,0,.07);
+    padding: 20px 24px;
+  }
+  .chart-card-title { font-size: 13px; font-weight: 700; color: #374151; margin-bottom: 14px; display: flex; align-items: center; justify-content: space-between; }
+
+  /* ── Most-missed table ── */
+  .missed-row {
+    display: flex; align-items: center; gap: 10px; padding: 8px 0;
+    border-bottom: 1px solid #f1f3f5; font-size: 13px;
+  }
+  .missed-row:last-child { border-bottom: none; }
+  .missed-rank { width: 22px; height: 22px; border-radius: 50%; background: #fee2e2; color: #991b1b; font-size: 11px; font-weight: 800; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .missed-concept { flex: 1; font-weight: 600; color: #111827; }
+  .missed-case { font-size: 11px; color: #6c757d; }
+  .missed-bar-wrap { width: 80px; height: 5px; background: #f1f3f5; border-radius: 99px; overflow: hidden; }
+  .missed-bar { height: 100%; background: #ef4444; border-radius: 99px; }
+  .missed-pct { font-size: 12px; font-weight: 700; color: #991b1b; width: 36px; text-align: right; }
+
+  /* ── Export button ── */
+  .btn-export {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 7px 16px; border-radius: 6px; font-size: 13px; font-weight: 600;
+    background: #f1f3f5; color: #374151; text-decoration: none; border: none; cursor: pointer;
+    transition: background .12s;
+  }
+  .btn-export:hover { background: #e2e5e9; color: #111; text-decoration: none; }
 </style>
 
 <div class="page-header">
@@ -36,7 +67,8 @@
   <p class="subtitle">Overview of all student submissions{% if user.is_superuser %} and research evaluation runs{% endif %}.</p>
 </div>
 
-<div class="grid-4" style="margin-bottom:32px;">
+{# ── Summary stats ─────────────────────────────────────────────────────────── #}
+<div class="grid-4" style="margin-bottom:24px;">
   <div class="stat">
     <div class="stat-label">Students</div>
     <div class="stat-value" style="color:#0066cc;">{{ unique_students }}</div>
@@ -54,6 +86,23 @@
     <div class="stat-value">{{ research_runs|length }}</div>
   </div>
 </div>
+
+{# ── Charts ────────────────────────────────────────────────────────────────── #}
+{% if submission_rows %}
+<div class="dash-charts">
+  <div class="chart-card">
+    <div class="chart-card-title">
+      Average Coverage per Case
+      <a href="/export-submissions/" class="btn-export" title="Export all submissions as CSV">⬇ Export CSV</a>
+    </div>
+    <canvas id="caseChart" height="130"></canvas>
+  </div>
+  <div class="chart-card">
+    <div class="chart-card-title">Top Missed Concepts</div>
+    <div id="missedList"></div>
+  </div>
+</div>
+{% endif %}
 
 {# ── Student submissions ─────────────────────────────────────────────────────── #}
 <div class="section-header">
@@ -87,9 +136,7 @@
       <td><span class="badge badge-blue">Case {{ item.run.case_num }}</span></td>
       <td style="font-size:13px;">{{ item.topic }}</td>
       <td style="font-weight:700;">{{ item.score }} / {{ item.total }}</td>
-      <td>
-        <span class="score-pill {{ item.level }}">{{ item.pct }}%</span>
-      </td>
+      <td><span class="score-pill {{ item.level }}">{{ item.pct }}%</span></td>
       <td><a href="/evaluate/result/{{ item.run.pk }}/">View →</a></td>
     </tr>
     {% endfor %}
@@ -146,6 +193,80 @@
 {% else %}
 <div class="empty-state">No research runs imported yet.</div>
 {% endif %}
+{% endif %}
+
+{# ── Chart data + scripts ──────────────────────────────────────────────────── #}
+{% if dash_chart_json %}
+<script id="dashData" type="application/json">{{ dash_chart_json|safe }}</script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+(function() {
+  const d = JSON.parse(document.getElementById('dashData').textContent);
+
+  // ── Per-case bar chart ─────────────────────────────────────────────────
+  new Chart(document.getElementById('caseChart'), {
+    type: 'bar',
+    data: {
+      labels: d.case_labels,
+      datasets: [
+        {
+          label: 'Avg Coverage %',
+          data: d.case_avgs,
+          backgroundColor: d.case_avgs.map(v => v >= 75 ? 'rgba(16,185,129,.75)' : (v >= 50 ? 'rgba(245,158,11,.75)' : 'rgba(239,68,68,.75)')),
+          borderRadius: 5,
+          borderSkipped: false,
+        },
+        {
+          label: 'Submissions',
+          data: d.case_counts,
+          backgroundColor: 'rgba(0,102,204,.15)',
+          borderColor: 'rgba(0,102,204,.4)',
+          borderWidth: 1,
+          borderRadius: 5,
+          yAxisID: 'y2',
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { position: 'top', labels: { font: { size: 11 } } },
+        tooltip: {
+          callbacks: {
+            label: ctx => ctx.datasetIndex === 0
+              ? ` Avg coverage: ${ctx.parsed.y}%`
+              : ` Submissions: ${ctx.parsed.y}`
+          }
+        }
+      },
+      scales: {
+        y:  { min: 0, max: 100, ticks: { callback: v => v + '%', font: { size: 10 } }, grid: { color: 'rgba(0,0,0,.04)' } },
+        y2: { position: 'right', min: 0, grid: { display: false }, ticks: { font: { size: 10 } }, title: { display: true, text: '# submissions', font: { size: 10 } } },
+        x:  { grid: { display: false } },
+      }
+    }
+  });
+
+  // ── Most-missed concepts ───────────────────────────────────────────────
+  const container = document.getElementById('missedList');
+  if (d.missed && d.missed.length) {
+    d.missed.forEach((m, i) => {
+      container.innerHTML += `
+        <div class="missed-row">
+          <div class="missed-rank">${i+1}</div>
+          <div style="flex:1;min-width:0;">
+            <div class="missed-concept">${m.concept}</div>
+            <div class="missed-case">Case ${m.case_num}</div>
+          </div>
+          <div class="missed-bar-wrap"><div class="missed-bar" style="width:${m.miss_pct}%;"></div></div>
+          <div class="missed-pct">${m.miss_pct}%</div>
+        </div>`;
+    });
+  } else {
+    container.innerHTML = '<div style="color:#9ca3af;font-size:13px;padding:12px 0;">No data yet.</div>';
+  }
+})();
+</script>
 {% endif %}
 
 {% endblock %}

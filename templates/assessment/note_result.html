@@ -28,7 +28,7 @@
   .score-banner.high .score-circle { border-color: #10b981; color: #065f46; }
   .score-banner.mid  .score-circle { border-color: #f59e0b; color: #92400e; }
   .score-banner.low  .score-circle { border-color: #ef4444; color: #991b1b; }
-  .score-num   { font-size: 28px; line-height: 1; }
+  .score-num   { font-size: 28px; line-height: 1; font-variant-numeric: tabular-nums; }
   .score-denom { font-size: 12px; }
 
   .score-info { flex: 1; min-width: 0; }
@@ -72,6 +72,32 @@
   .comp-delta.down { background: #fee2e2; color: #991b1b; }
   .comp-delta.same { background: #f3f4f6; color: #374151; }
 
+  /* ── Radar + summary row ── */
+  .result-overview {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 20px;
+    margin-bottom: 28px;
+  }
+  @media (max-width: 680px) { .result-overview { grid-template-columns: 1fr; } }
+  .radar-card {
+    background: #fff; border-radius: 10px; box-shadow: 0 1px 4px rgba(0,0,0,.07);
+    padding: 20px 24px;
+  }
+  .radar-card-title { font-size: 13px; font-weight: 700; color: #374151; margin-bottom: 12px; }
+  .quick-stats-card {
+    background: #fff; border-radius: 10px; box-shadow: 0 1px 4px rgba(0,0,0,.07);
+    padding: 20px 24px; display: flex; flex-direction: column; gap: 0;
+  }
+  .qs-title { font-size: 13px; font-weight: 700; color: #374151; margin-bottom: 14px; }
+  .qs-row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 9px 0; border-bottom: 1px solid #f1f3f5; font-size: 13px;
+  }
+  .qs-row:last-child { border-bottom: none; }
+  .qs-label { color: #6c757d; }
+  .qs-val { font-weight: 700; }
+  .qs-bar-wrap { width: 90px; height: 5px; background: #e5e7eb; border-radius: 99px; overflow: hidden; }
+  .qs-bar { height: 100%; border-radius: 99px; }
+
   /* ── Section headers ── */
   .section-head {
     display: flex; align-items: center; gap: 10px;
@@ -114,6 +140,17 @@
   .legend-item { display: flex; align-items: center; gap: 5px; }
   .legend-dot { width: 12px; height: 12px; border-radius: 3px; flex-shrink: 0; }
   mark.hl { border-radius: 3px; padding: 1px 2px; cursor: default; font-style: normal; }
+
+  /* ── Concept rows ── */
+  .concept-row { display: flex; align-items: flex-start; gap: 12px; padding: 11px 0; border-bottom: 1px solid #f1f3f5; }
+  .concept-row:last-child { border-bottom: none; }
+  .concept-icon { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
+  .concept-body { flex: 1; min-width: 0; }
+  .concept-name { font-weight: 700; font-size: 14px; color: #111827; margin-bottom: 2px; }
+  .concept-fn { font-size: 11px; color: #9ca3af; font-family: monospace; }
+  .concept-evidence { font-size: 12px; color: #374151; background: #f0fdf4; border-left: 3px solid #10b981; padding: 4px 10px; border-radius: 0 4px 4px 0; margin-top: 5px; }
+  .concept-missing-name { color: #991b1b; }
+  .concept-syns { font-size: 11px; color: #9ca3af; margin-top: 3px; }
 
   /* ── Actions ── */
   .action-row {
@@ -172,7 +209,7 @@
 {# ── Score banner ─────────────────────────────────────────────────────────── #}
 <div class="score-banner {{ score_level }}">
   <div class="score-circle">
-    <span class="score-num">{{ score }}</span>
+    <span class="score-num" id="scoreNum">0</span>
     <span class="score-denom">/ {{ total }}</span>
   </div>
   <div class="score-info">
@@ -193,9 +230,52 @@
   </div>
 </div>
 
+{# ── Overview: radar chart + quick stats ──────────────────────────────────── #}
+<div class="result-overview">
+  <div class="radar-card">
+    <div class="radar-card-title">Coverage by Clinical Domain</div>
+    <canvas id="radarChart" height="200"></canvas>
+  </div>
+  <div class="quick-stats-card">
+    <div class="qs-title">Quick Stats</div>
+    <div class="qs-row">
+      <span class="qs-label">Concepts found</span>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <div class="qs-bar-wrap"><div class="qs-bar" id="foundBar" style="background:#10b981;width:0%;transition:width 1s .3s;"></div></div>
+        <span class="qs-val" style="color:#065f46;">{{ score }}</span>
+      </div>
+    </div>
+    <div class="qs-row">
+      <span class="qs-label">Concepts missing</span>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <div class="qs-bar-wrap"><div class="qs-bar" id="missingBar" style="background:#ef4444;width:0%;transition:width 1s .4s;"></div></div>
+        <span class="qs-val" style="color:#991b1b;">{{ missing|length }}</span>
+      </div>
+    </div>
+    <div class="qs-row">
+      <span class="qs-label">Total required</span>
+      <span class="qs-val">{{ total }}</span>
+    </div>
+    <div class="qs-row">
+      <span class="qs-label">Coverage score</span>
+      <span class="qs-val" style="color:{% if pct >= 75 %}#065f46{% elif pct >= 50 %}#92400e{% else %}#991b1b{% endif %};">{{ pct }}%</span>
+    </div>
+    <div class="qs-row">
+      <span class="qs-label">Clinical case</span>
+      <span class="qs-val" style="color:#1e40af;">Case {{ case_num }}</span>
+    </div>
+    {% if run.created_at %}
+    <div class="qs-row">
+      <span class="qs-label">Submitted</span>
+      <span class="qs-val" style="font-weight:500;font-size:12px;">{{ run.created_at|date:"M j · g:i A" }}</span>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
 {# ── Highlighted note ─────────────────────────────────────────────────────── #}
 {% if run.note_text %}
-<div class="section-head">📄 Patient Note — Highlighted</div>
+<div class="section-head">📄 Your Note — Evidence Highlighted</div>
 
 <div class="note-legend" id="noteLegend"></div>
 
@@ -256,59 +336,49 @@
 {# ── Present concepts ─────────────────────────────────────────────────────── #}
 {% if present %}
 <div class="section-head">
-  Concepts Present
+  ✓ Concepts Documented
   <span class="section-badge sbadge-green">{{ present|length }} found</span>
 </div>
-<table>
-  <thead><tr><th>#</th><th>Concept</th><th>Evidence from note</th></tr></thead>
-  <tbody>
-    {% for v in present %}
-    <tr>
-      <td><code>{{ v.feature_num }}</code></td>
-      <td style="font-weight:600;">{{ v.concept }}</td>
-      <td>
-        {% if v.evidence %}
-          <div class="evidence">"{{ v.evidence }}"</div>
-        {% else %}
-          <span style="color:#9ca3af;font-size:12px;">—</span>
-        {% endif %}
-      </td>
-    </tr>
-    {% endfor %}
-  </tbody>
-</table>
+<div class="card" style="padding: 4px 20px;">
+  {% for v in present %}
+  <div class="concept-row">
+    <div class="concept-icon">✅</div>
+    <div class="concept-body">
+      <div style="display:flex;align-items:baseline;gap:8px;">
+        <div class="concept-name">{{ v.concept }}</div>
+        <div class="concept-fn">#{{ v.feature_num }}</div>
+      </div>
+      {% if v.evidence %}
+        <div class="concept-evidence">"{{ v.evidence }}"</div>
+      {% endif %}
+    </div>
+  </div>
+  {% endfor %}
+</div>
 {% endif %}
 
 {# ── Missing concepts ─────────────────────────────────────────────────────── #}
 {% if missing %}
 <div class="section-head">
-  Concepts Missing
+  ✗ Concepts Missing
   <span class="section-badge sbadge-red">{{ missing|length }} not found</span>
 </div>
-<table>
-  <thead><tr><th>#</th><th>Concept</th><th>Accepted phrasings</th></tr></thead>
-  <tbody>
-    {% for v in missing %}
-    <tr>
-      <td><code>{{ v.feature_num }}</code></td>
-      <td style="color:#991b1b; font-weight:600;">
-        <div class="synonym-wrap">
-          {{ v.concept }}
-          {% if synonym_map %}
-            <span class="synonym-hint">ⓘ</span>
-            <div class="tooltip">
-              {% for fn, syns in synonym_map.items %}{% if fn == v.feature_num %}{{ syns }}{% endif %}{% endfor %}
-            </div>
-          {% endif %}
-        </div>
-      </td>
-      <td style="font-size:12px; color:#6c757d;">
-        {% for fn, syns in synonym_map.items %}{% if fn == v.feature_num %}{{ syns }}{% endif %}{% endfor %}
-      </td>
-    </tr>
-    {% endfor %}
-  </tbody>
-</table>
+<div class="card" style="padding: 4px 20px;">
+  {% for v in missing %}
+  <div class="concept-row">
+    <div class="concept-icon">❌</div>
+    <div class="concept-body">
+      <div style="display:flex;align-items:baseline;gap:8px;">
+        <div class="concept-name concept-missing-name">{{ v.concept }}</div>
+        <div class="concept-fn">#{{ v.feature_num }}</div>
+      </div>
+      {% for fn, syns in synonym_map.items %}{% if fn == v.feature_num %}
+        <div class="concept-syns">Accepted: {{ syns }}</div>
+      {% endif %}{% endfor %}
+    </div>
+  </div>
+  {% endfor %}
+</div>
 {% endif %}
 
 {# ── Actions ─────────────────────────────────────────────────────────────── #}
@@ -317,15 +387,124 @@
   <a href="/evaluate/" class="btn-action btn-secondary-action">+ New submission</a>
   <a href="/my-results/" class="btn-action btn-secondary-action">My history</a>
   <button onclick="window.print()" class="btn-action btn-secondary-action no-print">⬇ Print / Save PDF</button>
+  <button onclick="copyResult()" id="copyBtn" class="btn-action btn-secondary-action no-print">📋 Copy score</button>
 </div>
 
+{# ── Radar chart + animation data ─────────────────────────────────────────── #}
+<script id="conceptData" type="application/json">
+{
+  "present": [{% for v in present %}"{{ v.concept|escapejs }}"{% if not forloop.last %},{% endif %}{% endfor %}],
+  "missing": [{% for v in missing %}"{{ v.concept|escapejs }}"{% if not forloop.last %},{% endif %}{% endfor %}],
+  "score": {{ score }},
+  "total": {{ total }},
+  "pct":   {{ pct }}
+}
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script>
+(function () {
+  const cd = JSON.parse(document.getElementById('conceptData').textContent);
+
+  // ── Animated score counter ─────────────────────────────────────────────
   window.addEventListener('load', function () {
     const fill = document.getElementById('scoreFill');
-    if (fill) {
-      const pct = parseFloat(fill.dataset.pct) || 0;
-      requestAnimationFrame(function() { fill.style.width = pct + '%'; });
+    if (fill) requestAnimationFrame(() => { fill.style.width = fill.dataset.pct + '%'; });
+    const scoreEl = document.getElementById('scoreNum');
+    const target  = cd.score;
+    let cur = 0;
+    const step = Math.ceil(target / 20) || 1;
+    const iv = setInterval(() => {
+      cur = Math.min(cur + step, target);
+      scoreEl.textContent = cur;
+      if (cur >= target) clearInterval(iv);
+    }, 40);
+    // Quick-stats bars
+    const pct = cd.total ? (cd.score / cd.total * 100) : 0;
+    setTimeout(() => {
+      document.getElementById('foundBar').style.width   = pct + '%';
+      document.getElementById('missingBar').style.width = (100 - pct) + '%';
+    }, 100);
+  });
+
+  // ── Clinical domain classifier ────────────────────────────────────────
+  const DOMAINS = [
+    { name: 'Chief Complaint', keys: ['chief', 'complaint', 'onset', 'duration', 'timing', 'character', 'quality', 'severity', 'location'] },
+    { name: 'HPI / Symptoms',  keys: ['pain', 'ache', 'nausea', 'vomit', 'fever', 'chills', 'fatigue', 'bleed', 'discharge', 'irregular', 'heavy', 'palpitat', 'racing', 'pound', 'anxiety', 'sleep', 'headache', 'dizzy', 'syncop', 'breath', 'cough', 'dyspnea', 'weight', 'appet', 'hot flash', 'sweat', 'tremor', 'numb', 'weak', 'rash', 'swelling'] },
+    { name: 'Past Medical Hx', keys: ['history', 'prior', 'previous', 'past medical', 'condition', 'diagnos', 'hospitali', 'surgery', 'procedure', 'thyroid', 'diabet', 'hypertens', 'asthma', 'depression', 'gerd', 'peptic', 'pcos'] },
+    { name: 'Medications',     keys: ['medic', 'drug', 'prescription', 'ocp', 'contraceptive', 'nsaid', 'supplement', 'vitamin', 'dose', 'allerg', 'reaction'] },
+    { name: 'Family History',  keys: ['family', 'mother', 'father', 'parent', 'sibling', 'heredit', 'genetic', 'cardiac', 'cancer', 'diabet'] },
+    { name: 'Social History',  keys: ['social', 'smoke', 'tobacco', 'alcohol', 'drink', 'marijuana', 'caffeine', 'occup', 'work', 'exercise', 'diet', 'sexual', 'partner', 'marital', 'stress', 'living', 'travel'] },
+  ];
+
+  function classify(concept) {
+    const lc = concept.toLowerCase();
+    for (const d of DOMAINS) {
+      if (d.keys.some(k => lc.includes(k))) return d.name;
+    }
+    return 'Other / ROS';
+  }
+
+  // Build domain counts
+  const domainNames = DOMAINS.map(d => d.name).concat('Other / ROS');
+  const found  = {};
+  const total  = {};
+  domainNames.forEach(n => { found[n] = 0; total[n] = 0; });
+
+  cd.present.forEach(c => { const d = classify(c); found[d]++; total[d]++; });
+  cd.missing.forEach(c => { const d = classify(c); total[d]++; });
+
+  const activeDomains = domainNames.filter(n => total[n] > 0);
+  const radarData     = activeDomains.map(n => total[n] > 0 ? Math.round(found[n] / total[n] * 100) : 0);
+
+  // Draw radar chart
+  new Chart(document.getElementById('radarChart'), {
+    type: 'radar',
+    data: {
+      labels: activeDomains,
+      datasets: [{
+        label: 'Coverage %',
+        data: radarData,
+        backgroundColor: 'rgba(0,102,204,0.12)',
+        borderColor:     'rgba(0,102,204,0.8)',
+        borderWidth: 2,
+        pointBackgroundColor: radarData.map(v => v >= 75 ? '#10b981' : (v >= 50 ? '#f59e0b' : '#ef4444')),
+        pointRadius: 4,
+      }]
+    },
+    options: {
+      responsive: true,
+      scales: {
+        r: {
+          min: 0, max: 100,
+          ticks: { stepSize: 25, callback: v => v + '%', font: { size: 10 } },
+          grid:  { color: 'rgba(0,0,0,.08)' },
+          pointLabels: { font: { size: 11 }, color: '#374151' },
+        }
+      },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: ctx => {
+              const d = activeDomains[ctx.dataIndex];
+              return ` ${found[d]}/${total[d]} (${ctx.parsed.r}%)`;
+            }
+          }
+        }
+      }
     }
   });
+
+  // ── Copy score ─────────────────────────────────────────────────────────
+  window.copyResult = function() {
+    const text = `ClinNoteRAG Result — Case {{ case_num }} ({{ topic }})\nScore: {{ score }}/{{ total }} ({{ pct }}%)\n{{ score_msg }}`;
+    navigator.clipboard.writeText(text).then(() => {
+      const btn = document.getElementById('copyBtn');
+      btn.textContent = '✓ Copied!';
+      setTimeout(() => { btn.textContent = '📋 Copy score'; }, 2000);
+    });
+  };
+})();
 </script>
 {% endblock %}

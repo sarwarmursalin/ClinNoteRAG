@@ -1,20 +1,20 @@
 """Evaluate ClinNoteRAG against NBME annotated notes.
 
 Supports three strategies for the ablation study:
-  agentic_rag  — per-concept tool-use retrieval (default)
-  naive_rag    — bulk retrieval, single prompt
-  no_rag       — concept names only, zero retrieval
+  agentic_rag   — per-concept tool-use retrieval (default)
+  naive_rag     — bulk synonym retrieval, single prompt
+  no_rag        — concept names only, zero retrieval
 
 Results saved incrementally after every note so a kill never loses data.
 Each strategy writes to its own output files.
 
 Run:
-    python -u scripts/evaluate.py                              # agentic RAG, all notes
-    python -u scripts/evaluate.py --strategy naive_rag         # naive RAG baseline
-    python -u scripts/evaluate.py --strategy no_rag            # no-RAG baseline
-    python -u scripts/evaluate.py --limit 100                  # quick test
-    python -u scripts/evaluate.py --resume-from-case 206       # resume interrupted run
-    python -u scripts/evaluate.py --to-case 205                # stop after case 205
+    python -u scripts/evaluate.py                                   # agentic RAG, all notes
+    python -u scripts/evaluate.py --strategy naive_rag              # naive RAG baseline
+    python -u scripts/evaluate.py --strategy no_rag                 # no-RAG baseline
+    python -u scripts/evaluate.py --limit 100                       # quick test
+    python -u scripts/evaluate.py --resume-from-case 206            # resume interrupted run
+    python -u scripts/evaluate.py --to-case 205                     # stop after case 205
 """
 
 import argparse
@@ -98,8 +98,8 @@ def build_annotated_pairs(annot_df) -> pd.DataFrame:
     )
 
 
-async def evaluate_all(strategy, collection, case_feature_map, concept_names_map,
-                       present_set, notes_df, annot_df, results_csv,
+async def evaluate_all(strategy, collection, case_feature_map,
+                       concept_names_map, present_set, notes_df, annot_df, results_csv,
                        limit=None, resume_from_case=None, to_case=None):
 
     notes_lookup = {
@@ -206,7 +206,8 @@ def compute_and_print_metrics(y_true, y_pred, label):
 
 async def main():
     parser = argparse.ArgumentParser(description="ClinNoteRAG Evaluation")
-    parser.add_argument("--strategy", choices=["agentic_rag", "naive_rag", "no_rag"],
+    parser.add_argument("--strategy",
+                        choices=["agentic_rag", "naive_rag", "no_rag"],
                         default="agentic_rag", help="Evaluation strategy (default: agentic_rag)")
     parser.add_argument("--limit", type=int, default=None,
                         help="Evaluate only first N notes")
@@ -228,8 +229,8 @@ async def main():
         print(f"Stopping after case {args.to_case}", flush=True)
     print("", flush=True)
 
-    client = chromadb.PersistentClient(path=settings.CHROMA_DB_PATH)
-    collection = client.get_collection("nbme_concepts")
+    chroma_client = chromadb.PersistentClient(path=settings.CHROMA_DB_PATH)
+    collection = chroma_client.get_collection("nbme_concepts")
 
     features_df, annot_df, notes_df = load_data()
     case_feature_map  = build_case_feature_map(features_df)

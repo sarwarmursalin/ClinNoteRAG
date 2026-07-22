@@ -20,8 +20,9 @@ urlpatterns = [
     path("profile/",                      views.profile_view,       name="profile"),
 
     # Faculty
-    path("dashboard/",           views.faculty_dashboard, name="faculty-dashboard"),
-    path("ablation/",            views.ablation_view,     name="ablation"),
-    path("runs/<int:run_id>/",   views.run_detail,        name="run-detail"),
-    path("case/<int:case_num>/", views.case_concepts,     name="case-concepts"),
+    path("dashboard/",              views.faculty_dashboard,       name="faculty-dashboard"),
+    path("ablation/",               views.ablation_view,           name="ablation"),
+    path("runs/<int:run_id>/",      views.run_detail,              name="run-detail"),
+    path("case/<int:case_num>/",    views.case_concepts,           name="case-concepts"),
+    path("export-submissions/",     views.export_submissions_csv,  name="export-submissions"),
 ]

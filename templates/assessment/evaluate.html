@@ -75,6 +75,15 @@
   .case-card.selected .cc-title { color: #1e40af; }
   .cc-demo { font-size: 11px; color: #9ca3af; line-height: 1.3; }
 
+  /* ── Info button on card ── */
+  .cc-info-btn {
+    position: absolute; bottom: 6px; right: 7px;
+    font-size: 11px; color: #9ca3af; background: none; border: none;
+    cursor: pointer; padding: 2px 4px; border-radius: 3px;
+    transition: color .12s;
+  }
+  .cc-info-btn:hover { color: #0066cc; }
+
   /* ── Selected pill ── */
   .selected-pill {
     display: none; align-items: center; gap: 6px;
@@ -129,11 +138,107 @@
     box-shadow: 0 4px 14px rgba(0,102,204,.35);
   }
   .btn-evaluate:disabled { background: #6c8ebf; cursor: not-allowed; transform: none; box-shadow: none; }
-  .spinner { display: none; }
-  .loading .spinner { display: inline; }
-  .loading .btn-text { display: none; }
   .eval-meta { font-size: 12px; color: #9ca3af; line-height: 1.6; }
   .eval-meta strong { color: #6c757d; }
+
+  /* ── Case info slide panel ── */
+  .case-panel {
+    position: fixed; top: 0; right: -400px; width: 380px; height: 100vh;
+    background: #fff; box-shadow: -4px 0 24px rgba(0,0,0,.13);
+    z-index: 1000; transition: right .28s cubic-bezier(.4,0,.2,1);
+    overflow-y: auto; padding: 28px 28px 40px;
+  }
+  .case-panel.open { right: 0; }
+  .panel-backdrop {
+    display: none; position: fixed; inset: 0; background: rgba(0,0,0,.25);
+    z-index: 999; backdrop-filter: blur(1px);
+  }
+  .panel-backdrop.visible { display: block; }
+  .panel-close {
+    position: absolute; top: 16px; right: 18px;
+    background: #f1f3f5; border: none; border-radius: 50%;
+    width: 30px; height: 30px; font-size: 16px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; color: #6c757d;
+    transition: background .12s;
+  }
+  .panel-close:hover { background: #e5e7eb; color: #111; }
+  .panel-case-badge {
+    display: inline-block; background: #dbeafe; color: #1e40af;
+    font-size: 11px; font-weight: 800; padding: 3px 10px;
+    border-radius: 20px; letter-spacing: .4px; text-transform: uppercase;
+    margin-bottom: 12px;
+  }
+  .panel-title { font-size: 18px; font-weight: 800; color: #111827; margin-bottom: 6px; }
+  .panel-desc {
+    font-size: 14px; color: #374151; line-height: 1.65;
+    padding: 14px; background: #f8f9fa; border-radius: 8px;
+    border-left: 3px solid #0066cc; margin-bottom: 20px;
+  }
+  .panel-section-title {
+    font-size: 12px; font-weight: 700; color: #6c757d;
+    text-transform: uppercase; letter-spacing: .5px; margin-bottom: 10px;
+  }
+  .panel-checklist { list-style: none; margin: 0; padding: 0; }
+  .panel-checklist li {
+    display: flex; align-items: flex-start; gap: 9px;
+    font-size: 13px; color: #374151; padding: 7px 0;
+    border-bottom: 1px solid #f1f3f5; line-height: 1.5;
+  }
+  .panel-checklist li:last-child { border-bottom: none; }
+  .pc-dot {
+    width: 18px; height: 18px; border-radius: 50%; flex-shrink: 0;
+    background: #eff6ff; border: 2px solid #93c5fd;
+    display: flex; align-items: center; justify-content: center;
+    margin-top: 1px; font-size: 10px; color: #3b82f6;
+  }
+  .panel-use-btn {
+    margin-top: 20px; width: 100%; padding: 11px; border-radius: 7px;
+    background: #0066cc; color: #fff; border: none; cursor: pointer;
+    font-size: 14px; font-weight: 700; transition: background .12s;
+  }
+  .panel-use-btn:hover { background: #0052a3; }
+
+  /* ── Loading overlay ── */
+  .load-overlay {
+    position: fixed; inset: 0; background: rgba(15,23,42,.82);
+    z-index: 2000; display: flex; align-items: center; justify-content: center;
+    backdrop-filter: blur(4px);
+  }
+  .load-box {
+    background: #fff; border-radius: 16px; padding: 40px 48px;
+    text-align: center; max-width: 440px; width: 90%;
+    box-shadow: 0 20px 60px rgba(0,0,0,.3);
+  }
+  .load-spinner {
+    width: 52px; height: 52px; border-radius: 50%;
+    border: 4px solid #e5e7eb;
+    border-top-color: #0066cc;
+    animation: spin .7s linear infinite;
+    margin: 0 auto 20px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .load-title { font-size: 18px; font-weight: 800; color: #111827; margin-bottom: 6px; }
+  .load-timer { font-size: 32px; font-weight: 800; color: #0066cc; margin: 8px 0 16px; font-variant-numeric: tabular-nums; }
+  .load-bar-wrap {
+    height: 4px; background: #e5e7eb; border-radius: 99px;
+    overflow: hidden; margin-bottom: 20px;
+  }
+  .load-bar-fill {
+    height: 100%; background: #0066cc; border-radius: 99px;
+    width: 5%; animation: loadprog 14s ease-in-out forwards;
+  }
+  @keyframes loadprog {
+    0%   { width: 5%; }
+    30%  { width: 45%; }
+    60%  { width: 68%; }
+    85%  { width: 82%; }
+    100% { width: 90%; }
+  }
+  .load-step {
+    font-size: 13px; color: #6c757d; min-height: 20px;
+    transition: opacity .3s;
+  }
+  .load-case-info { font-size: 12px; color: #9ca3af; margin-top: 12px; }
 </style>
 
 {# ── Step progress ─────────────────────────────────────────────────────────── #}
@@ -169,10 +274,8 @@
       <div class="field-label">
         <span class="step-badge">1</span>
         Select Clinical Case
+        <span style="font-size:12px;color:#9ca3af;font-weight:400;margin-left:4px;">— click ⓘ on any card for case details</span>
       </div>
-      <p style="font-size:13px;color:#6c757d;margin-bottom:12px;">
-        Choose the NBME standardized patient case you are documenting.
-      </p>
 
       <span class="selected-pill" id="selectedPill">
         ✓ <span id="selectedPillText">Case selected</span>
@@ -184,7 +287,8 @@
           <div class="cc-check">✓</div>
           <div class="cc-num">Case {{ card.num }}</div>
           <div class="cc-title">{{ card.label|slice:"11:" }}</div>
-          <div class="cc-demo">{{ card.description|truncatechars:60 }}</div>
+          <div class="cc-demo">{{ card.description|truncatechars:48 }}</div>
+          <button type="button" class="cc-info-btn" onclick="event.stopPropagation(); openPanel({{ card.num }})">ⓘ</button>
         </div>
         {% endfor %}
       </div>
@@ -212,9 +316,12 @@
 
     {# ── Step 2: Note text ──────────────────────────────────────────────────── #}
     <div class="form-group">
-      <div class="field-label">
-        <span class="step-badge">2</span>
-        Patient History Note
+      <div class="field-label" style="justify-content:space-between;">
+        <div style="display:flex;align-items:center;gap:9px;">
+          <span class="step-badge">2</span>
+          Patient History Note
+        </div>
+        <span id="noteLenIndicator" style="font-size:12px;color:#9ca3af;font-weight:400;"></span>
       </div>
       <div class="textarea-wrap">
         <textarea name="note_text" class="form-textarea" rows="14" id="noteText"
@@ -227,8 +334,7 @@
     {# ── Submit ─────────────────────────────────────────────────────────────── #}
     <div class="submit-row">
       <button type="submit" class="btn-evaluate" id="submitBtn">
-        <span class="btn-text">⚡ Evaluate Note</span>
-        <span class="spinner">⏳ Evaluating… (~15s)</span>
+        ⚡ Evaluate Note
       </button>
       <p class="eval-meta">
         <strong>~10–15 seconds</strong> · checks all required clinical concepts<br>
@@ -238,19 +344,246 @@
   </form>
 </div>
 
+{# ── Case Info Slide Panel ─────────────────────────────────────────────────── #}
+<div id="panelBackdrop" class="panel-backdrop" onclick="closePanel()"></div>
+<div id="casePanel" class="case-panel">
+  <button type="button" class="panel-close" onclick="closePanel()">×</button>
+  <div class="panel-case-badge" id="panelBadge">Case 201</div>
+  <div class="panel-title" id="panelTitle"></div>
+  <div class="panel-desc" id="panelDesc"></div>
+  <div class="panel-section-title">Key things to document</div>
+  <ul class="panel-checklist" id="panelChecklist"></ul>
+  <button type="button" class="panel-use-btn" id="panelSelectBtn" onclick="selectFromPanel()">
+    Select this case →
+  </button>
+</div>
+
+{# ── Loading Overlay ───────────────────────────────────────────────────────── #}
+<div id="loadOverlay" class="load-overlay" style="display:none;">
+  <div class="load-box">
+    <div class="load-spinner"></div>
+    <div class="load-title">Evaluating your note…</div>
+    <div class="load-timer" id="loadTimer">0s</div>
+    <div class="load-bar-wrap"><div class="load-bar-fill"></div></div>
+    <div class="load-step" id="loadStep">Connecting to AI system</div>
+    <div class="load-case-info" id="loadCaseInfo"></div>
+  </div>
+</div>
+
 <script>
-  const initialCase = {{ form.case_num.value|default:'201' }};
+  // ── Case data ──────────────────────────────────────────────────────────────
+  const CASE_DATA = {
+    201: {
+      title: "Irregular Menses (44F)",
+      desc: "A 44-year-old woman presents with irregular menstrual cycles for the past 3 years. Cycles have become unpredictable in frequency and flow.",
+      checklist: [
+        "Duration & pattern of menstrual cycle changes",
+        "Associated symptoms: hot flashes, night sweats, mood changes",
+        "Weight changes, fatigue, hair/skin changes",
+        "Menstrual history (age at menarche, prior pregnancies)",
+        "Current medications — especially OCP/hormonal therapy",
+        "Allergies (drug and environmental)",
+        "Family history of early menopause or thyroid disease",
+        "Social history: stress, exercise, smoking, alcohol",
+        "Thyroid symptoms (heat/cold intolerance, palpitations)"
+      ]
+    },
+    202: {
+      title: "Epigastric Discomfort (35M)",
+      desc: "A 35-year-old man presents with epigastric discomfort and upper abdominal pain for the past 2 months, worsening after meals.",
+      checklist: [
+        "Onset, duration, severity, and character of pain",
+        "Aggravating factors (food, NSAIDs, alcohol, caffeine)",
+        "Relieving factors (antacids, food, position)",
+        "Associated symptoms: nausea, vomiting, heartburn, regurgitation",
+        "Bowel habits — changes, blood in stool, melena",
+        "Weight loss, appetite changes",
+        "NSAID/aspirin use; alcohol and tobacco use",
+        "Past medical history: PUD, GERD, H. pylori",
+        "Family history of GI malignancy or PUD"
+      ]
+    },
+    203: {
+      title: "Headache (20F)",
+      desc: "A 20-year-old woman presents with a global headache that has lasted 1–2 days. She is otherwise healthy.",
+      checklist: [
+        "Onset, duration, location, and quality of headache",
+        "Severity (scale 1–10) and progression over time",
+        "Associated symptoms: photophobia, phonophobia, nausea, vomiting",
+        "Neurological symptoms: vision changes, weakness, numbness",
+        "Precipitating factors: stress, sleep, menstrual cycle",
+        "Prior headache episodes and prior treatments",
+        "Current medications and any recent changes",
+        "Family history of migraines",
+        "Social history: stress, screen time, caffeine, sleep habits"
+      ]
+    },
+    204: {
+      title: "Sleep Disturbance / Grief (67F)",
+      desc: "A 67-year-old woman presents with difficulty sleeping for 3 weeks following the death of her son.",
+      checklist: [
+        "Sleep pattern: onset difficulty vs. early awakening",
+        "Duration of sleep disturbance and relation to bereavement",
+        "Mood: sadness, crying, anhedonia, hopelessness",
+        "Appetite changes and weight loss",
+        "Concentration and memory difficulties",
+        "Suicidal ideation or thoughts of self-harm",
+        "Energy levels and daily functioning",
+        "Social support system and coping mechanisms",
+        "Past psychiatric history; current medications",
+        "Medical history: pain, dyspnea, urinary frequency at night"
+      ]
+    },
+    205: {
+      title: "Palpitations / Heart Racing (26F)",
+      desc: "A 26-year-old woman presents with episodes of heart racing over the past 5 years, occurring suddenly and resolving spontaneously.",
+      checklist: [
+        "Onset, duration, and frequency of palpitation episodes",
+        "Precipitating/relieving factors (Valsalva, exertion, caffeine)",
+        "Associated symptoms: chest pain, syncope, dizziness, SOB",
+        "Regularity of heartbeat during episodes",
+        "Thyroid symptoms: heat intolerance, weight changes",
+        "Anxiety or panic symptoms",
+        "Current medications (stimulants, decongestants)",
+        "Caffeine, alcohol, and recreational drug use",
+        "Family history of arrhythmias or sudden cardiac death"
+      ]
+    },
+    206: {
+      title: "Anxiety / Nervousness (45F)",
+      desc: "A 45-year-old woman presents with feeling anxious and nervous. She is concerned about her symptoms.",
+      checklist: [
+        "Onset and duration of anxiety symptoms",
+        "Triggers and frequency of anxious episodes",
+        "Associated physical symptoms: palpitations, sweating, tremor",
+        "Sleep disturbance and concentration difficulties",
+        "Thyroid symptoms: heat intolerance, weight loss, tremor",
+        "Mood: depression, irritability, crying spells",
+        "Menopausal symptoms: hot flashes, night sweats",
+        "Current medications and caffeine/alcohol use",
+        "Life stressors: work, relationships, finances",
+        "Past psychiatric history and family history"
+      ]
+    },
+    207: {
+      title: "Heavy Periods / Weight Gain (35F)",
+      desc: "A 35-year-old woman presents with heavy, irregular periods and weight gain over the past 6 months.",
+      checklist: [
+        "Menstrual pattern: frequency, duration, flow amount",
+        "Weight gain: amount, rate, and distribution",
+        "Associated symptoms: fatigue, cold intolerance, constipation",
+        "Hair and skin changes (thinning hair, dry skin)",
+        "Mood changes, depression, cognitive slowing",
+        "Voice changes, puffiness",
+        "Past medical history: thyroid disease, PCOS",
+        "Current medications (especially thyroid, hormonal)",
+        "Family history of thyroid disease",
+        "Review of systems: cardiovascular, GI"
+      ]
+    },
+    208: {
+      title: "Right Lower Quadrant Pain (20F)",
+      desc: "A 20-year-old woman presents with right lower quadrant abdominal pain, acutely worsening.",
+      checklist: [
+        "Onset, duration, severity and character of pain (sharp, crampy)",
+        "Radiation and migration of pain",
+        "Associated symptoms: nausea, vomiting, fever, anorexia",
+        "Bowel habits: diarrhea, constipation, blood",
+        "Urinary symptoms: dysuria, frequency, hematuria",
+        "Gynecological history: LMP, vaginal discharge, STI history",
+        "Sexual history and contraceptive use",
+        "Past medical/surgical history: prior abdominal surgeries",
+        "Pregnancy status (LMP, possibility of pregnancy)"
+      ]
+    },
+    209: {
+      title: "Chest Pain / Pleuritic (17M)",
+      desc: "A 17-year-old male presents with chest pain that worsens with deep breathing and movement.",
+      checklist: [
+        "Onset, location, quality, and severity of chest pain",
+        "Pleuritic character: worsening with inspiration, coughing",
+        "Associated symptoms: SOB, cough (productive?), fever",
+        "Recent illness: URI, pharyngitis, Coxsackie virus",
+        "Radiation of pain to shoulder or back",
+        "Relief with sitting forward (pericarditis sign)",
+        "History of trauma or recent vigorous activity",
+        "Past medical history: autoimmune disease, prior episodes",
+        "Family history of cardiac disease",
+        "Social history: smoking, drugs, sexual activity"
+      ]
+    },
+    210: {
+      title: "Palpitations / Heart Pounding (17M)",
+      desc: "A 17-year-old male presents with intermittent heart pounding and racing for a few months.",
+      checklist: [
+        "Onset, duration, and frequency of episodes",
+        "Character: rapid, irregular, or pounding",
+        "Associated symptoms: chest pain, dizziness, syncope, SOB",
+        "Precipitating factors: exercise, caffeine, stress",
+        "Relieving maneuvers: Valsalva, bearing down",
+        "Caffeine, energy drinks, recreational drug use",
+        "Current medications",
+        "Past cardiac history or prior diagnosis",
+        "Family history of arrhythmia, sudden cardiac death, cardiomyopathy",
+        "School/sports participation and exercise tolerance"
+      ]
+    }
+  };
+
+  let _panelActiveCase = null;
+
+  function openPanel(num) {
+    const data = CASE_DATA[num];
+    if (!data) return;
+    _panelActiveCase = num;
+    document.getElementById('panelBadge').textContent  = 'Case ' + num;
+    document.getElementById('panelTitle').textContent  = data.title;
+    document.getElementById('panelDesc').textContent   = data.desc;
+    const ul = document.getElementById('panelChecklist');
+    ul.innerHTML = '';
+    data.checklist.forEach(item => {
+      ul.innerHTML += `<li><span class="pc-dot">✓</span><span>${item}</span></li>`;
+    });
+    const btn = document.getElementById('panelSelectBtn');
+    const isSel = document.getElementById('caseNumInput').value == num;
+    btn.textContent = isSel ? '✓ Case selected' : 'Select this case →';
+    btn.style.background = isSel ? '#10b981' : '#0066cc';
+    document.getElementById('casePanel').classList.add('open');
+    document.getElementById('panelBackdrop').classList.add('visible');
+  }
+
+  function closePanel() {
+    document.getElementById('casePanel').classList.remove('open');
+    document.getElementById('panelBackdrop').classList.remove('visible');
+  }
+
+  function selectFromPanel() {
+    if (_panelActiveCase) {
+      selectCase(_panelActiveCase);
+      const btn = document.getElementById('panelSelectBtn');
+      btn.textContent = '✓ Case selected';
+      btn.style.background = '#10b981';
+    }
+    setTimeout(closePanel, 500);
+  }
+
+  // ── Case selection ─────────────────────────────────────────────────────────
+  const initialCase = parseInt('{{ form.case_num.value|default:"201" }}');
 
   function selectCase(num) {
     document.querySelectorAll('.case-card').forEach(c => c.classList.remove('selected'));
     const card = document.querySelector('[data-case="' + num + '"]');
     if (card) card.classList.add('selected');
     document.getElementById('caseNumInput').value = num;
-
-    const title = card ? card.querySelector('.cc-title').textContent.trim() : '';
+    const title = CASE_DATA[num] ? CASE_DATA[num].title : ('Case ' + num);
     const pill  = document.getElementById('selectedPill');
     document.getElementById('selectedPillText').textContent = 'Case ' + num + ' — ' + title;
     pill.classList.add('visible');
+    if (_panelActiveCase === num) {
+      const btn = document.getElementById('panelSelectBtn');
+      btn.textContent = '✓ Case selected';
+      btn.style.background = '#10b981';
+    }
   }
 
   selectCase(initialCase);
@@ -259,22 +592,59 @@
     document.getElementById('tipsPanel').classList.toggle('open');
   }
 
-  // Word count
-  const noteEl  = document.getElementById('noteText');
-  const countEl = document.getElementById('wordCount');
+  // ── Word count + note length indicator ────────────────────────────────────
+  const noteEl   = document.getElementById('noteText');
+  const countEl  = document.getElementById('wordCount');
+  const lenEl    = document.getElementById('noteLenIndicator');
   function updateWordCount() {
-    const words = noteEl.value.trim() === ''
-      ? 0
-      : noteEl.value.trim().split(/\s+/).length;
+    const words = noteEl.value.trim() === '' ? 0 : noteEl.value.trim().split(/\s+/).length;
     countEl.textContent = words + ' word' + (words !== 1 ? 's' : '');
+    if (words === 0)      lenEl.textContent = '';
+    else if (words < 50)  lenEl.textContent = 'Add more detail for better coverage';
+    else if (words < 120) lenEl.textContent = 'Good length';
+    else                  lenEl.textContent = 'Detailed note';
+    lenEl.style.color = words < 50 ? '#f59e0b' : (words < 120 ? '#6c757d' : '#10b981');
   }
   noteEl.addEventListener('input', updateWordCount);
   updateWordCount();
 
-  document.getElementById('evalForm').addEventListener('submit', function () {
-    const btn = document.getElementById('submitBtn');
-    btn.classList.add('loading');
-    btn.disabled = true;
+  // ── Loading overlay ────────────────────────────────────────────────────────
+  const LOAD_STEPS = [
+    'Connecting to AI system…',
+    'Parsing patient history note…',
+    'Retrieving clinical concept guidelines…',
+    'Evaluating concept coverage…',
+    'Extracting evidence phrases…',
+    'Compiling results…',
+  ];
+  let _loadStart, _loadTimer, _loadStepIdx = 0;
+
+  function startLoadOverlay() {
+    const caseNum = parseInt(document.getElementById('caseNumInput').value);
+    const caseInfo = CASE_DATA[caseNum];
+    document.getElementById('loadCaseInfo').textContent =
+      caseInfo ? 'Case ' + caseNum + ' · ' + caseInfo.title : 'Case ' + caseNum;
+    document.getElementById('loadOverlay').style.display = 'flex';
+    _loadStart = Date.now();
+    _loadStepIdx = 0;
+    document.getElementById('loadStep').textContent = LOAD_STEPS[0];
+    _loadTimer = setInterval(function() {
+      const secs = Math.floor((Date.now() - _loadStart) / 1000);
+      document.getElementById('loadTimer').textContent = secs + 's';
+      const stepIdx = Math.min(Math.floor(secs / 2.5), LOAD_STEPS.length - 1);
+      if (stepIdx !== _loadStepIdx) {
+        _loadStepIdx = stepIdx;
+        const el = document.getElementById('loadStep');
+        el.style.opacity = '0';
+        setTimeout(() => { el.textContent = LOAD_STEPS[stepIdx]; el.style.opacity = '1'; }, 150);
+      }
+    }, 500);
+  }
+
+  document.getElementById('evalForm').addEventListener('submit', function(e) {
+    if (!document.getElementById('noteText').value.trim()) return;
+    document.getElementById('submitBtn').disabled = true;
+    startLoadOverlay();
   });
 </script>
 {% endblock %}

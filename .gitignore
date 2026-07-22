@@ -33,3 +33,16 @@ scripts/*_log.txt
 
 # uv
 .python-version
+
+# Generated script outputs (PNG images, evaluation artifacts)
+scripts/*.png
+
+# ChromaDB extra collections (untracked, generated at runtime)
+chroma_db/61d6f5c0-3585-4866-94c1-f4710fae2224/
+chroma_db/709cca4b-b42c-4fb9-86c3-9238c8ccb4cd/
+
+# Papers drafts (local only)
+papers/
+
+# Report markdown files
+PROGRESS_REPORT.md

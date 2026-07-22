@@ -3,7 +3,7 @@
 {% block content %}
 <style>
   .page-top { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 28px; flex-wrap: wrap; gap: 12px; }
-  .stats-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 28px; }
+  .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 28px; }
   .stat-mini {
     background: #fff; border-radius: 8px; padding: 16px 20px;
     box-shadow: 0 1px 4px rgba(0,0,0,.07);
@@ -29,6 +29,30 @@
     border-radius: 7px; font-weight: 600; text-decoration: none;
   }
   .btn-start:hover { background: #0052a3; color: #fff; text-decoration: none; }
+
+  /* ── Charts row ── */
+  .charts-row { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; margin-bottom: 28px; }
+  @media (max-width: 700px) { .charts-row { grid-template-columns: 1fr; } .stats-row { grid-template-columns: repeat(2,1fr); } }
+  .chart-card {
+    background: #fff; border-radius: 10px; box-shadow: 0 1px 4px rgba(0,0,0,.07);
+    padding: 20px 24px;
+  }
+  .chart-card-title { font-size: 13px; font-weight: 700; color: #374151; margin-bottom: 14px; }
+
+  /* ── Per-case breakdown ── */
+  .case-breakdown { display: flex; flex-direction: column; gap: 8px; }
+  .case-row {
+    display: flex; align-items: center; gap: 10px; font-size: 13px;
+  }
+  .case-label { width: 70px; font-weight: 700; color: #1e40af; flex-shrink: 0; font-size: 11px; }
+  .case-bar-wrap { flex: 1; height: 16px; background: #f1f3f5; border-radius: 99px; overflow: hidden; }
+  .case-bar { height: 100%; border-radius: 99px; transition: width 1s cubic-bezier(.4,0,.2,1); width: 0; }
+  .case-pct { width: 36px; text-align: right; font-weight: 700; font-size: 12px; flex-shrink: 0; }
+  .case-count { font-size: 11px; color: #9ca3af; flex-shrink: 0; }
+
+  /* ── Submissions table ── */
+  .retry-link { color: #9ca3af; font-size: 12px; }
+  .retry-link:hover { color: #0066cc; }
 </style>
 
 <div class="page-top">
@@ -40,6 +64,8 @@
 </div>
 
 {% if runs %}
+
+{# ── Summary stats ─────────────────────────────────────────────────────────── #}
 <div class="stats-row">
   <div class="stat-mini">
     <div class="n" style="color:#0066cc;">{{ runs|length }}</div>
@@ -53,8 +79,26 @@
     <div class="n" style="color:#065f46;">{{ best_pct }}%</div>
     <div class="l">Best attempt</div>
   </div>
+  <div class="stat-mini">
+    <div class="n" style="color:#6c757d;">{{ cases_attempted }}</div>
+    <div class="l">Cases attempted</div>
+  </div>
 </div>
 
+{# ── Charts ────────────────────────────────────────────────────────────────── #}
+<div class="charts-row">
+  <div class="chart-card">
+    <div class="chart-card-title">Coverage Progress Over Time</div>
+    <canvas id="progressChart" height="120"></canvas>
+  </div>
+  <div class="chart-card">
+    <div class="chart-card-title">Best Score per Case</div>
+    <div class="case-breakdown" id="caseBreakdown"></div>
+  </div>
+</div>
+
+{# ── Submissions table ─────────────────────────────────────────────────────── #}
+<h2 style="margin-bottom:12px;">All Submissions</h2>
 <table>
   <thead>
     <tr>
@@ -77,15 +121,90 @@
       <td style="font-size:13px;">{{ item.topic }}</td>
       <td style="font-weight:700;">{{ item.score }} / {{ item.total }}</td>
       <td><span class="score-pill {{ item.level }}">{{ item.pct }}%</span></td>
-      <td>
+      <td style="white-space:nowrap;">
         <a href="/evaluate/result/{{ item.run.pk }}/">View →</a>
         &nbsp;
-        <a href="/evaluate/?from_run={{ item.run.pk }}" style="color:#6c757d;font-size:12px;">Retry</a>
+        <a href="/evaluate/?from_run={{ item.run.pk }}" class="retry-link">Retry</a>
       </td>
     </tr>
     {% endfor %}
   </tbody>
 </table>
+
+{# ── Chart data ────────────────────────────────────────────────────────────── #}
+<script id="myResultsData" type="application/json">{{ chart_json|safe }}</script>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+(function() {
+  const d = JSON.parse(document.getElementById('myResultsData').textContent);
+
+  // ── Progress line chart ────────────────────────────────────────────────
+  new Chart(document.getElementById('progressChart'), {
+    type: 'line',
+    data: {
+      labels: d.labels,
+      datasets: [{
+        label: 'Coverage %',
+        data:  d.values,
+        borderColor: '#0066cc',
+        backgroundColor: 'rgba(0,102,204,.08)',
+        borderWidth: 2.5,
+        pointBackgroundColor: d.values.map(v => v >= 75 ? '#10b981' : (v >= 50 ? '#f59e0b' : '#ef4444')),
+        pointRadius: 5,
+        pointHoverRadius: 7,
+        tension: 0.35,
+        fill: true,
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            title: (items) => d.tooltips[items[0].dataIndex],
+            label: (ctx) => ' Coverage: ' + ctx.parsed.y + '%',
+          }
+        }
+      },
+      scales: {
+        y: {
+          min: 0, max: 100,
+          ticks: { callback: v => v + '%', font: { size: 11 } },
+          grid: { color: 'rgba(0,0,0,.05)' },
+        },
+        x: { grid: { display: false }, ticks: { font: { size: 10 } } },
+      },
+    }
+  });
+
+  // ── Per-case breakdown bars ────────────────────────────────────────────
+  const container = document.getElementById('caseBreakdown');
+  if (d.by_case && d.by_case.length) {
+    d.by_case.forEach(c => {
+      const color = c.best_pct >= 75 ? '#10b981' : (c.best_pct >= 50 ? '#f59e0b' : '#ef4444');
+      container.innerHTML += `
+        <div class="case-row">
+          <div class="case-label">Case ${c.case_num}</div>
+          <div class="case-bar-wrap">
+            <div class="case-bar" data-w="${c.best_pct}" style="background:${color};"></div>
+          </div>
+          <div class="case-pct" style="color:${color};">${c.best_pct}%</div>
+          <div class="case-count">${c.count}×</div>
+        </div>`;
+    });
+    // Animate bars after render
+    requestAnimationFrame(() => {
+      document.querySelectorAll('.case-bar').forEach(b => {
+        b.style.width = b.dataset.w + '%';
+      });
+    });
+  } else {
+    container.innerHTML = '<div style="color:#9ca3af;font-size:13px;padding:20px 0;">No cases yet.</div>';
+  }
+})();
+</script>
 
 {% else %}
 <div class="empty-state">

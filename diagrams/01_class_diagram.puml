@@ -1,0 +1,72 @@
+@startuml ClinNoteRAG_ClassDiagram
+title ClinNoteRAG — Class Diagram
+
+skinparam classAttributeIconSize 0
+skinparam classBorderColor #1A50C8
+skinparam classBackgroundColor #EBF0FB
+skinparam classHeaderBackgroundColor #1A50C8
+skinparam classFontColor White
+skinparam classHeaderFontColor White
+skinparam ArrowColor #1A50C8
+skinparam shadowing false
+skinparam linetype ortho
+
+class User <<Django Built-in>> {
+  +id : int
+  +username : str
+  +first_name : str
+  +last_name : str
+  +email : str
+  +is_superuser : bool
+  +is_staff : bool
+  +is_active : bool
+  +date_joined : datetime
+  --
+  +get_full_name() : str
+}
+
+class UserProfile {
+  +id : int
+  +role : str
+  +student_id : str
+  --
+  +is_faculty : bool
+  +is_student : bool
+  +__str__() : str
+}
+
+class EvaluationRun {
+  +id : int
+  +strategy : str
+  +llm_model : str
+  +notes_evaluated : int
+  +precision : float
+  +recall : float
+  +f1 : float
+  +created_at : datetime
+  +student_name : str
+  +student_id : str
+  +case_num : int
+  +note_text : str
+  --
+  +__str__() : str
+}
+
+class ConceptVerdict {
+  +id : int
+  +pn_num : str
+  +case_num : int
+  +feature_num : str
+  +concept : str
+  +predicted : bool
+  +ground_truth : bool
+  +evidence : str
+  --
+  +__str__() : str
+}
+
+User "1" -- "1" UserProfile   : has profile\n(OneToOne)
+User "1" -- "0..*" EvaluationRun : submits
+EvaluationRun "1" *-- "0..*" ConceptVerdict : contains
+
+@enduml
