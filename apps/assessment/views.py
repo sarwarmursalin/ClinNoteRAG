@@ -95,9 +95,15 @@ def _enrich_absent_reasons(verdicts, note_text, case_num, collection):
         except Exception:
             continue
 
-        # Extract meaningful keywords from the concept doc (3+ char, non-stopword)
-        raw_words = re.findall(r'\b[a-z]{3,}\b', doc.lower())
+        # Extract keywords from the concept NAME only (not full synonyms doc)
+        # to avoid false matches from generic words in synonym phrases like "pain scale"
+        concept_name = doc.split("\n")[0].replace("Concept:", "").strip()
+        raw_words = re.findall(r'\b[a-z]{3,}\b', concept_name.lower())
         keywords = [w for w in raw_words if w not in _REASON_SKIP_WORDS]
+        # Fall back to full doc only if concept name yields no usable keywords
+        if not keywords:
+            raw_words = re.findall(r'\b[a-z]{3,}\b', doc.lower())
+            keywords = [w for w in raw_words if w not in _REASON_SKIP_WORDS]
 
         # Find first sentence in the note that contains any keyword
         matched_sentence = None
