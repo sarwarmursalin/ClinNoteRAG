@@ -331,6 +331,37 @@
       <p class="form-hint">Write the full patient history as you would document a clinical encounter. The AI checks for coverage of each required clinical concept.</p>
     </div>
 
+    {# ── Step 3: Grading Strategy ───────────────────────────────────────────── #}
+    <div class="form-group">
+      <div class="field-label">
+        <span class="step-badge">3</span>
+        Grading Strategy
+      </div>
+      <div style="display:flex;flex-direction:column;gap:10px;margin-top:8px;">
+        <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;padding:10px 14px;border-radius:8px;border:1px solid #e2e5e9;background:#f8fafd;">
+          <input type="radio" name="strategy" value="naive_rag" checked style="margin-top:3px;accent-color:#0066cc;">
+          <div>
+            <div style="font-weight:600;font-size:14px;color:#111827;">Naive RAG <span style="font-size:11px;font-weight:500;color:#0066cc;background:#ebf0fb;padding:2px 7px;border-radius:10px;margin-left:4px;">Recommended</span></div>
+            <div style="font-size:12px;color:#6c757d;margin-top:2px;">Retrieves all concept definitions at once, then grades in one LLM call.</div>
+          </div>
+        </label>
+        <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;padding:10px 14px;border-radius:8px;border:1px solid #e2e5e9;background:#f8fafd;">
+          <input type="radio" name="strategy" value="no_rag" style="margin-top:3px;accent-color:#0066cc;">
+          <div>
+            <div style="font-weight:600;font-size:14px;color:#111827;">No-RAG</div>
+            <div style="font-size:12px;color:#6c757d;margin-top:2px;">Concept names only — relies on the LLM's own clinical knowledge, no retrieval.</div>
+          </div>
+        </label>
+        <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;padding:10px 14px;border-radius:8px;border:1px solid #e2e5e9;background:#f8fafd;">
+          <input type="radio" name="strategy" value="agentic_rag" style="margin-top:3px;accent-color:#0066cc;">
+          <div>
+            <div style="font-weight:600;font-size:14px;color:#111827;">Agentic RAG</div>
+            <div style="font-size:12px;color:#6c757d;margin-top:2px;">Per-concept retrieval with a tool-calling agent — slower but most evidence-grounded.</div>
+          </div>
+        </label>
+      </div>
+    </div>
+
     {# ── Submit ─────────────────────────────────────────────────────────────── #}
     <div class="submit-row">
       <button type="submit" class="btn-evaluate" id="submitBtn">

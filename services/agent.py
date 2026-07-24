@@ -46,6 +46,15 @@ class ConceptVerdict(BaseModel):
         default=None,
         description="Verbatim or paraphrased text from the note that supports the verdict",
     )
+    reason: str | None = Field(
+        default=None,
+        description=(
+            "If present=False, a one-sentence explanation for the student. "
+            "Either 'Not mentioned in the note.' "
+            "OR 'Mentioned but incorrect: the note states \"[relevant quote]\" but this concept requires [concept].' "
+            "Leave null when present=True."
+        ),
+    )
 
 
 class CoverageOutput(BaseModel):
@@ -74,18 +83,25 @@ You are ClinNoteRAG, an expert medical education AI that evaluates whether a med
 student's patient history note documents specific clinical concepts.
 
 For EACH feature number you are given:
-1. Call the `retrieve_concept_info` tool with that feature_num to get the concept \
-   name and its accepted synonym variants.
-2. Read the patient note carefully for ANY mention of the concept or its synonyms \
-   — including paraphrases, abbreviations, and misspellings.
-3. Return:
-   - present=True  if the note contains clear textual evidence of the concept
-   - present=False if the concept is absent or not mentioned
-   - evidence: the exact phrase or sentence from the note that supports present=True \
-     (leave null if absent)
+1. RETRIEVE — call the `retrieve_concept_info` tool with that feature_num to get the \
+   concept name and ALL accepted synonym variants.
+2. SCAN — identify every sentence or phrase in the note that could relate to this concept \
+   or any of its synonyms, including paraphrases, abbreviations, and clinical shorthand.
+3. JUDGE — decide: would a reasonable clinician reading this note conclude that the student \
+   documented this concept? Use the retrieved synonyms as guidance, but also accept natural \
+   clinical language that conveys the same meaning \
+   (e.g. "feels feverish" counts for "Subjective fevers"; \
+   "chest hurts more when breathing in" counts for "Worse with deep breath").
+4. RETURN:
+   - present=True if the note documents this concept in any recognisable form
+   - present=False only if there is genuinely no mention or implication of the concept
+   - evidence: the most relevant phrase or sentence from the note (null if absent)
+   - reason: if present=False, one sentence for the student — either \
+     "Not mentioned in the note." OR \
+     "Mentioned but incorrect: the note states '[quote]' but this concept requires \
+     [expected value]." (null if present=True)
 
-Be conservative: only mark present=True when there is direct textual evidence in the note.
-Do not infer from general clinical context. Cover ALL feature numbers — do not skip any.
+Cover ALL feature numbers — do not skip any.
 """
 
 _model = OpenAIModel(

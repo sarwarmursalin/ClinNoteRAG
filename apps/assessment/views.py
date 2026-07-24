@@ -19,6 +19,8 @@ from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 
 from services.naive_rag import assess_note_naive
+from services.no_rag import assess_note_no_rag
+from services.agent import assess_note as assess_note_agentic
 
 from .forms import CASE_DESCRIPTIONS, LoginForm, NoteEvaluationForm, StudentRegistrationForm
 from .models import ConceptVerdict, EvaluationRun, UserProfile
@@ -57,6 +59,65 @@ _GENDER_IN_NOTE_RE = re.compile(
     r'\b(male|female|man|woman|boy|girl|he\b|she\b|his\b|her\b|mr\.?|ms\.?|mrs\.?)\b',
     re.IGNORECASE,
 )
+
+_REASON_SKIP_WORDS = {
+    "a", "an", "the", "of", "to", "in", "or", "and", "with",
+    "no", "not", "is", "was", "are", "be", "by", "on", "at",
+    "for", "its", "this", "that", "from",
+}
+
+
+def _friendly_concept(concept: str) -> str:
+    """Return a student-facing display name for age/gender concepts."""
+    if _AGE_CONCEPT_RE.search(concept):
+        return "Patient Age (any age accepted)"
+    if concept.strip().lower() in ("male", "female"):
+        return "Patient Gender (any gender accepted)"
+    return concept
+
+
+def _enrich_absent_reasons(verdicts, note_text, case_num, collection):
+    """Python-side fallback: detect when an absent concept's keywords DO appear
+    in the note (wrong value / partial mention) and override the LLM reason with
+    the actual sentence so the student understands what went wrong."""
+    note_lower = note_text.lower()
+    # Split note into sentences for quote extraction
+    sentences = [s.strip() for s in re.split(r'[.!?\n]', note_text) if s.strip()]
+
+    for v in verdicts:
+        if v.present:
+            continue
+        try:
+            result = collection.get(ids=[f"{case_num}_{v.feature_num}"])
+            if not result["documents"]:
+                continue
+            doc = result["documents"][0]
+        except Exception:
+            continue
+
+        # Extract meaningful keywords from the concept doc (3+ char, non-stopword)
+        raw_words = re.findall(r'\b[a-z]{3,}\b', doc.lower())
+        keywords = [w for w in raw_words if w not in _REASON_SKIP_WORDS]
+
+        # Find first sentence in the note that contains any keyword
+        matched_sentence = None
+        for kw in keywords:
+            for sent in sentences:
+                if kw in sent.lower():
+                    matched_sentence = sent
+                    break
+            if matched_sentence:
+                break
+
+        if matched_sentence:
+            v.reason = (
+                f'Mentioned but incorrect: your note states "{matched_sentence}" '
+                f'— this concept specifically requires "{v.concept}".'
+            )
+        else:
+            v.reason = "Not mentioned in the note."
+
+    return verdicts
 
 def _apply_flex_age_gender(verdicts, note_text):
     """Give credit for any documented age and any documented gender.
@@ -434,16 +495,37 @@ def evaluate_note_view(request):
             note_text = form.cleaned_data["note_text"].strip()
             prev_run_id = request.POST.get("prev_run_id", "").strip()
 
+            strategy     = form.cleaned_data["strategy"]
             features_df  = _load_features()
             feature_nums = features_df[features_df["CASE_NUM"] == case_num]["FEATURE_NUM"].tolist()
             collection   = _get_chroma()
 
             try:
-                verdicts = asyncio.run(assess_note_naive(
-                    note_text=note_text, case_num=case_num,
-                    feature_nums=feature_nums, chroma_collection=collection,
-                ))
+                if strategy == "no_rag":
+                    results = collection.get(
+                        where={"case_num": int(case_num)},
+                        include=["documents", "metadatas"],
+                    )
+                    concept_names = {
+                        str(m["feature_num"]): d.split("\n")[0].replace("Concept:", "").strip()
+                        for d, m in zip(results["documents"], results["metadatas"])
+                    }
+                    verdicts = asyncio.run(assess_note_no_rag(
+                        note_text=note_text, case_num=case_num,
+                        feature_nums=feature_nums, concept_names=concept_names,
+                    ))
+                elif strategy == "agentic_rag":
+                    verdicts = asyncio.run(assess_note_agentic(
+                        note_text=note_text, case_num=case_num,
+                        feature_nums=feature_nums, chroma_collection=collection,
+                    ))
+                else:
+                    verdicts = asyncio.run(assess_note_naive(
+                        note_text=note_text, case_num=case_num,
+                        feature_nums=feature_nums, chroma_collection=collection,
+                    ))
                 verdicts = _apply_flex_age_gender(verdicts, note_text)
+                verdicts = _enrich_absent_reasons(verdicts, note_text, case_num, collection)
             except Exception as e:
                 err = str(e)
                 vpn_keywords = ("503", "502", "Service Unavailable", "Connection error",
@@ -458,7 +540,7 @@ def evaluate_note_view(request):
                 })
 
             run = EvaluationRun.objects.create(
-                strategy     = "naive_rag",
+                strategy     = strategy,
                 llm_model    = settings.CAIR_LLM_MODEL,
                 notes_evaluated = 1,
                 user         = request.user,
@@ -472,7 +554,9 @@ def evaluate_note_view(request):
                 ConceptVerdict(
                     run=run, pn_num="student_submission", case_num=case_num,
                     feature_num=v.feature_num, concept=v.concept,
-                    predicted=bool(v.present), ground_truth=False, evidence=v.evidence or "",
+                    predicted=bool(v.present), ground_truth=False,
+                    evidence=v.evidence or "",
+                    reason=v.reason or "",
                 )
                 for v in verdicts
             ])
@@ -504,6 +588,8 @@ def note_result_view(request, run_id: int):
         pass
 
     verdicts = ConceptVerdict.objects.filter(run=run).order_by("feature_num")
+    for v in verdicts:
+        v.display_concept = _friendly_concept(v.concept)
     present  = [v for v in verdicts if v.predicted]
     missing  = [v for v in verdicts if not v.predicted]
     score    = len(present)

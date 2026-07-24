@@ -86,11 +86,23 @@ class StudentRegistrationForm(forms.Form):
         return cleaned
 
 
+STRATEGY_CHOICES = [
+    ("naive_rag",   "Naive RAG — retrieves all concept definitions at once"),
+    ("no_rag",      "No-RAG — concept names only, no retrieval"),
+    ("agentic_rag", "Agentic RAG — per-concept retrieval with tool-calling agent"),
+]
+
 class NoteEvaluationForm(forms.Form):
     case_num = forms.ChoiceField(
         choices=CASE_CHOICES,
         label="Clinical Case",
         widget=forms.Select(attrs={"class": "form-select"}),
+    )
+    strategy = forms.ChoiceField(
+        choices=STRATEGY_CHOICES,
+        label="Grading Strategy",
+        initial="naive_rag",
+        widget=forms.RadioSelect(attrs={"class": "strategy-radio"}),
     )
     note_text = forms.CharField(
         label="Patient History Note",

@@ -77,6 +77,7 @@ class ConceptVerdict(models.Model):
     predicted = models.BooleanField()
     ground_truth = models.BooleanField()
     evidence = models.TextField(blank=True)
+    reason = models.TextField(blank=True)
 
     class Meta:
         indexes = [

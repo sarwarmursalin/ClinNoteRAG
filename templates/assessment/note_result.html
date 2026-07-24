@@ -151,6 +151,11 @@
   .concept-evidence { font-size: 12px; color: #374151; background: #f0fdf4; border-left: 3px solid #10b981; padding: 4px 10px; border-radius: 0 4px 4px 0; margin-top: 5px; }
   .concept-missing-name { color: #991b1b; }
   .concept-syns { font-size: 11px; color: #9ca3af; margin-top: 3px; }
+  .concept-reason {
+    font-size: 12px; color: #92400e; background: #fffbeb;
+    border-left: 3px solid #f59e0b; padding: 4px 10px;
+    border-radius: 0 4px 4px 0; margin-top: 5px;
+  }
 
   /* ── Actions ── */
   .action-row {
@@ -220,6 +225,7 @@
     </div>
     <div class="meta-pills">
       <span class="meta-pill">Case {{ case_num }} — {{ topic }}</span>
+      <span class="meta-pill">{{ run.get_strategy_display }}</span>
       {% if run.user %}
         <span class="meta-pill">{{ run.user.get_full_name|default:run.user.username }}</span>
       {% elif run.student_name %}
@@ -284,7 +290,7 @@
 </div>
 
 <script id="evidenceData" type="application/json">
-[{% for v in present %}{% if v.evidence %}{"concept":"{{ v.concept|escapejs }}","evidence":"{{ v.evidence|escapejs }}"}{% if not forloop.last %},{% endif %}{% endif %}{% endfor %}]
+[{% for v in present %}{% if v.evidence %}{"concept":"{{ v.display_concept|escapejs }}","evidence":"{{ v.evidence|escapejs }}"}{% if not forloop.last %},{% endif %}{% endif %}{% endfor %}]
 </script>
 
 <script>
@@ -345,7 +351,7 @@
     <div class="concept-icon">✅</div>
     <div class="concept-body">
       <div style="display:flex;align-items:baseline;gap:8px;">
-        <div class="concept-name">{{ v.concept }}</div>
+        <div class="concept-name">{{ v.display_concept }}</div>
         <div class="concept-fn">#{{ v.feature_num }}</div>
       </div>
       {% if v.evidence %}
@@ -369,12 +375,15 @@
     <div class="concept-icon">❌</div>
     <div class="concept-body">
       <div style="display:flex;align-items:baseline;gap:8px;">
-        <div class="concept-name concept-missing-name">{{ v.concept }}</div>
+        <div class="concept-name concept-missing-name">{{ v.display_concept }}</div>
         <div class="concept-fn">#{{ v.feature_num }}</div>
       </div>
       {% for fn, syns in synonym_map.items %}{% if fn == v.feature_num %}
         <div class="concept-syns">Accepted: {{ syns }}</div>
       {% endif %}{% endfor %}
+      {% if v.reason %}
+        <div class="concept-reason">{{ v.reason }}</div>
+      {% endif %}
     </div>
   </div>
   {% endfor %}
@@ -393,8 +402,8 @@
 {# ── Radar chart + animation data ─────────────────────────────────────────── #}
 <script id="conceptData" type="application/json">
 {
-  "present": [{% for v in present %}"{{ v.concept|escapejs }}"{% if not forloop.last %},{% endif %}{% endfor %}],
-  "missing": [{% for v in missing %}"{{ v.concept|escapejs }}"{% if not forloop.last %},{% endif %}{% endfor %}],
+  "present": [{% for v in present %}"{{ v.display_concept|escapejs }}"{% if not forloop.last %},{% endif %}{% endfor %}],
+  "missing": [{% for v in missing %}"{{ v.display_concept|escapejs }}"{% if not forloop.last %},{% endif %}{% endfor %}],
   "score": {{ score }},
   "total": {{ total }},
   "pct":   {{ pct }}

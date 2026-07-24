@@ -36,12 +36,22 @@ You will be given:
 1. A patient history note
 2. A list of clinical concepts with their accepted synonym variants
 
-For EACH concept provided, read the note carefully and determine:
-- present=True if the note contains clear textual evidence of the concept or any synonym
-- present=False if the concept is absent or not mentioned
-- evidence: the exact phrase or sentence from the note supporting present=True (null if absent)
+For EACH concept, follow these steps in order:
+1. SCAN — identify every sentence or phrase in the note that could relate to this concept, \
+   including paraphrases, abbreviations, clinical shorthand, and synonyms.
+2. JUDGE — decide: would a reasonable clinician reading this note conclude that the student \
+   documented this concept? Accept natural clinical language even when wording differs from \
+   the concept name (e.g. "feels feverish" counts for "Subjective fevers"; \
+   "lifted heavy objects" counts for "Recent heavy lifting at work").
+3. RETURN:
+   - present=True if the note documents this concept in any recognisable form
+   - present=False only if there is genuinely no mention or implication of the concept
+   - evidence: the most relevant phrase or sentence from the note (null if absent)
+   - reason: if present=False, one sentence for the student — either \
+     "Not mentioned in the note." OR \
+     "Mentioned but incorrect: the note states \'[quote]\' but this concept requires \
+     [expected value]." (null if present=True)
 
-Be conservative: only mark present=True when there is direct textual evidence.
 Cover ALL concepts — do not skip any.
 """
 
