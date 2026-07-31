@@ -15,6 +15,7 @@ from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
+from django.core.mail import send_mail
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 
@@ -22,8 +23,11 @@ from services.naive_rag import assess_note_naive
 from services.no_rag import assess_note_no_rag
 from services.agent import assess_note as assess_note_agentic
 
-from .forms import CASE_DESCRIPTIONS, LoginForm, NoteEvaluationForm, StudentRegistrationForm
-from .models import ConceptVerdict, EvaluationRun, UserProfile
+from .forms import (
+    CASE_DESCRIPTIONS, ForgotPasswordForm, LoginForm, NoteEvaluationForm,
+    OTPVerifyForm, ResetPasswordForm, StudentRegistrationForm,
+)
+from .models import ConceptVerdict, EvaluationRun, PasswordResetOTP, UserProfile
 
 _CASE_TOPICS = {
     201: "Irregular menses (44F)",
@@ -186,6 +190,99 @@ def login_view(request):
         login(request, form.get_user())
         return redirect(request.GET.get("next") or "home")
     return render(request, "assessment/login.html", {"form": form})
+
+
+def forgot_password_view(request):
+    if request.user.is_authenticated:
+        return redirect("home")
+    error = None
+    form = ForgotPasswordForm(request.POST or None)
+    if request.method == "POST" and form.is_valid():
+        username = form.cleaned_data["username"]
+        try:
+            user = User.objects.get(username=username)
+        except User.DoesNotExist:
+            error = "No account found with that username."
+        else:
+            if not user.email:
+                error = "No email address is linked to this account. Please contact your administrator."
+            else:
+                otp_obj = PasswordResetOTP.generate_for(user)
+                masked = user.email[:2] + "***@" + user.email.split("@")[1]
+                try:
+                    send_mail(
+                        subject="ClinNoteRAG — Password Reset Code",
+                        message=(
+                            f"Hi {user.get_full_name() or user.username},\n\n"
+                            f"Your one-time password reset code is:\n\n"
+                            f"    {otp_obj.otp}\n\n"
+                            f"This code expires in 10 minutes.\n\n"
+                            f"If you did not request this, please ignore this email."
+                        ),
+                        from_email=settings.DEFAULT_FROM_EMAIL,
+                        recipient_list=[user.email],
+                        fail_silently=False,
+                    )
+                except Exception:
+                    error = "Failed to send email. Please try again later."
+                else:
+                    request.session["reset_username"] = username
+                    return render(request, "assessment/forgot_password.html", {
+                        "form": form, "sent": True, "masked_email": masked,
+                    })
+    return render(request, "assessment/forgot_password.html", {"form": form, "error": error})
+
+
+def verify_otp_view(request):
+    if request.user.is_authenticated:
+        return redirect("home")
+    username = request.session.get("reset_username")
+    if not username:
+        return redirect("forgot-password")
+    error = None
+    form = OTPVerifyForm(request.POST or None)
+    if request.method == "POST" and form.is_valid():
+        otp_input = form.cleaned_data["otp"]
+        try:
+            user = User.objects.get(username=username)
+        except User.DoesNotExist:
+            return redirect("forgot-password")
+        otp_obj = (
+            PasswordResetOTP.objects
+            .filter(user=user, otp=otp_input, used=False)
+            .order_by("-created_at")
+            .first()
+        )
+        if otp_obj and otp_obj.is_valid():
+            otp_obj.used = True
+            otp_obj.save()
+            del request.session["reset_username"]
+            request.session["reset_verified_user"] = username
+            return redirect("reset-password")
+        else:
+            error = "Invalid or expired code. Please check your email and try again."
+    return render(request, "assessment/verify_otp.html", {"form": form, "error": error})
+
+
+def reset_password_view(request):
+    if request.user.is_authenticated:
+        return redirect("home")
+    username = request.session.get("reset_verified_user")
+    if not username:
+        return redirect("forgot-password")
+    error = None
+    form = ResetPasswordForm(request.POST or None)
+    if request.method == "POST" and form.is_valid():
+        try:
+            user = User.objects.get(username=username)
+        except User.DoesNotExist:
+            return redirect("forgot-password")
+        user.set_password(form.cleaned_data["password1"])
+        user.save()
+        del request.session["reset_verified_user"]
+        messages.success(request, "Password reset successfully. Please sign in with your new password.")
+        return redirect("login")
+    return render(request, "assessment/reset_password.html", {"form": form, "error": error})
 
 
 def custom_404(request, exception=None):

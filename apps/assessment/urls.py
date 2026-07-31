@@ -7,11 +7,14 @@ urlpatterns = [
     path("about/",  views.about_view,   name="about"),
 
     # Auth
-    path("login/",    views.login_view,          name="login"),
-    path("signup/",   views.register_choice_view, name="register-choice"),
-    path("register/", views.register_view,        name="register"),
-    path("logout/",   views.logout_view,          name="logout"),
-    path("home/",     views.home_view,            name="home"),
+    path("login/",           views.login_view,           name="login"),
+    path("forgot-password/", views.forgot_password_view, name="forgot-password"),
+    path("verify-otp/",      views.verify_otp_view,      name="verify-otp"),
+    path("reset-password/",  views.reset_password_view,  name="reset-password"),
+    path("signup/",          views.register_choice_view, name="register-choice"),
+    path("register/",        views.register_view,        name="register"),
+    path("logout/",          views.logout_view,          name="logout"),
+    path("home/",            views.home_view,            name="home"),
 
     # Student
     path("evaluate/",                     views.evaluate_note_view, name="evaluate-note"),

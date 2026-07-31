@@ -1,7 +1,11 @@
+import random
+from datetime import timedelta
+
 from django.contrib.auth.models import User
 from django.db import models
 from django.db.models.signals import post_save
 from django.dispatch import receiver
+from django.utils import timezone
 
 
 class UserProfile(models.Model):
@@ -88,3 +92,27 @@ class ConceptVerdict(models.Model):
     def __str__(self):
         match = "✓" if self.predicted == self.ground_truth else "✗"
         return f"{match} {self.pn_num}/{self.feature_num}: pred={self.predicted} gt={self.ground_truth}"
+
+
+class PasswordResetOTP(models.Model):
+    """Single-use 6-digit OTP for password reset; expires after 10 minutes."""
+
+    user       = models.ForeignKey(User, on_delete=models.CASCADE, related_name="reset_otps")
+    otp        = models.CharField(max_length=6)
+    created_at = models.DateTimeField(auto_now_add=True)
+    used       = models.BooleanField(default=False)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def is_valid(self):
+        return not self.used and timezone.now() < self.created_at + timedelta(minutes=10)
+
+    @classmethod
+    def generate_for(cls, user):
+        cls.objects.filter(user=user, used=False).update(used=True)
+        otp = f"{random.randint(0, 999999):06d}"
+        return cls.objects.create(user=user, otp=otp)
+
+    def __str__(self):
+        return f"OTP for {self.user.username} ({'used' if self.used else 'active'})"

@@ -59,8 +59,7 @@ class StudentRegistrationForm(forms.Form):
         widget=forms.TextInput(attrs={"class": INPUT_CLASS, "placeholder": "Choose a username"}),
     )
     email = forms.EmailField(
-        required=False,
-        widget=forms.EmailInput(attrs={"class": INPUT_CLASS, "placeholder": "Email (optional)"}),
+        widget=forms.EmailInput(attrs={"class": INPUT_CLASS, "placeholder": "Email address"}),
     )
     password1 = forms.CharField(
         label="Password",
@@ -76,6 +75,53 @@ class StudentRegistrationForm(forms.Form):
         if User.objects.filter(username=username).exists():
             raise forms.ValidationError("This username is already taken.")
         return username
+
+    def clean(self):
+        cleaned = super().clean()
+        p1 = cleaned.get("password1")
+        p2 = cleaned.get("password2")
+        if p1 and p2 and p1 != p2:
+            self.add_error("password2", "Passwords do not match.")
+        return cleaned
+
+
+class ForgotPasswordForm(forms.Form):
+    username = forms.CharField(
+        max_length=150,
+        widget=forms.TextInput(attrs={"class": INPUT_CLASS, "placeholder": "Your username", "autofocus": True}),
+    )
+
+
+class OTPVerifyForm(forms.Form):
+    otp = forms.CharField(
+        max_length=6,
+        min_length=6,
+        label="One-time password",
+        widget=forms.TextInput(attrs={
+            "class": INPUT_CLASS,
+            "placeholder": "6-digit code",
+            "autofocus": True,
+            "inputmode": "numeric",
+            "autocomplete": "one-time-code",
+        }),
+    )
+
+    def clean_otp(self):
+        otp = self.cleaned_data["otp"].strip()
+        if not otp.isdigit():
+            raise forms.ValidationError("Enter the 6-digit number from your email.")
+        return otp
+
+
+class ResetPasswordForm(forms.Form):
+    password1 = forms.CharField(
+        label="New password",
+        widget=forms.PasswordInput(attrs={"class": INPUT_CLASS, "placeholder": "New password"}),
+    )
+    password2 = forms.CharField(
+        label="Confirm new password",
+        widget=forms.PasswordInput(attrs={"class": INPUT_CLASS, "placeholder": "Confirm new password"}),
+    )
 
     def clean(self):
         cleaned = super().clean()

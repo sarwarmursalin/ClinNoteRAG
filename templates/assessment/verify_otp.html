@@ -1,0 +1,29 @@
+{% extends "base_auth.html" %}
+{% block title %}Enter Reset Code — ClinNoteRAG{% endblock %}
+{% block auth_content %}
+
+<h2 class="auth-title">Enter your reset code</h2>
+<p class="auth-sub">Check your email for the 6-digit code we sent you.</p>
+
+{% if error %}
+<div class="auth-error">{{ error }}</div>
+{% endif %}
+
+<form method="post" novalidate>
+  {% csrf_token %}
+  <div class="form-group">
+    <label>6-digit code</label>
+    {{ form.otp }}
+    {% if form.otp.errors %}<p class="field-error">{{ form.otp.errors.0 }}</p>{% endif %}
+  </div>
+  <button type="submit" class="btn-auth">Verify code</button>
+</form>
+
+<p style="text-align:center;margin-top:14px;font-size:13px;">
+  Didn't receive it?
+  <a href="{% url 'forgot-password' %}" style="color:#0066cc;text-decoration:none;">Send again</a>
+  &nbsp;·&nbsp;
+  <a href="{% url 'login' %}" style="color:#0066cc;text-decoration:none;">Back to Sign in</a>
+</p>
+
+{% endblock %}
